@@ -449,6 +449,32 @@
             border-radius: 8px;
         }
 
+        .bookmarks-grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+
+        .bookmark-card {
+            background: var(--card);
+            backdrop-filter: blur(20px);
+            padding: 18px;
+            border-radius: 16px;
+            border: 1px solid rgba(0, 212, 255, 0.12);
+            transition: transform 0.3s;
+        }
+
+        .bookmark-card:hover {
+            transform: translateY(-6px);
+        }
+
+        .empty {
+            text-align: center;
+            color: #888;
+            padding: 40px 20px;
+            font-size: 1.1rem;
+        }
+
         /* Top Stations Specific Styling */
         #top-stations table th,
         #top-stations table td {
@@ -689,9 +715,23 @@
                 <tbody id="recentBookingsBody"></tbody>
             </table>
         </div>
-    </div>
 
-    <!-- Booking Popup -->
+        <!-- Favorite Charging Stations – Now properly placed & styled -->
+        <div class="chart-container" style="margin-bottom: 60px;">
+            <div class="chart-title">
+                Favorite Charging Stations
+                <span style="font-size:0.9rem;color:var(--muted);font-weight:400;margin-left:8px;">
+                    Based on your customers’ visits
+                </span>
+            </div>
+            <div id="bookmarksContainer" class="bookmarks-grid">
+                <!-- Populated by JavaScript below -->
+                <div class="empty">No bookmarked or frequently visited stations yet</div>
+            </div>
+        </div>
+    </div> <!-- End of .main-content -->
+
+    <!-- Booking Popup remains at the very end (fixed position) -->
     <div id="bookingPopup">
         <h3>New Booking Request</h3>
         <img id="popupStationImg" src="" class="popup-station-img" alt="Station">
@@ -1432,6 +1472,38 @@
         // Initial render
         renderMaintenanceAlerts();
     </script>
+
+  <script>
+    // === Hardcoded Favorite Charging Stations (Admin View) ===
+    document.addEventListener('DOMContentLoaded', () => {
+        const favoriteStations = [
+            { name: "Central BKC", visits: 6, power: 150, price: 19, protocols: ["CCS2", "CHAdeMO"] },
+            { name: "Hub Worli", visits: 5, power: 120, price: 18, protocols: ["CCS2", "Type 2"] },
+            { name: "Infinity Powai", visits: 6, power: 180, price: 20, protocols: ["CCS2", "GB/T"] },
+            { name: "Central Vashi", visits: 5, power: 100, price: 17, protocols: ["Type 2", "CCS2"] }
+        ];
+
+        const container = document.getElementById('bookmarksContainer');
+        
+        container.innerHTML = favoriteStations.map(st => `
+            <div class="bookmark-card">
+                <h3 style="margin-bottom:8px; font-weight:700; color:var(--primary);">
+                    ${st.name}
+                </h3>
+                <p><strong>${st.power} kW</strong> • ${st.protocols.join(' • ')}</p>
+                <p style="opacity:0.8; margin-top:6px;">
+                    ₹${st.price}/kWh • 
+                    <span style="color:#10b981; font-weight:600;">
+                        ${st.visits} customer visit${st.visits > 1 ? 's' : ''} this week
+                    </span>
+                </p>
+                <small style="color:var(--muted); font-size:0.85rem;">
+                    High customer preference
+                </small>
+            </div>
+        `).join('');
+    });
+</script>
 </body>
 
 </html>
