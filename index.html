@@ -1,0 +1,2665 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>ChargePe — India's Fastest EV Charging Network (Upgraded)</title>
+    <meta name="description"
+        content="Find, reserve, and charge instantly at 350 kW stations across India. Frontend-only upgrades: PWA caching, AR overlay, Lottie, simulator, export/import." />
+    <meta name="theme-color" content="#00d4ff">
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Lottie for animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.9.6/lottie.min.js"></script>
+
+    <!-- Leaflet CSS & JS (if not already included) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Routing Machine CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
+
+
+
+    <style>
+        :root {
+            --primary: #00d4ff;
+            --green: #00ff88;
+            --red: #ff3b30;
+            --orange: #ff9500;
+            --bg-dark: #000814;
+            --card-dark: rgba(20, 25, 60, 0.88);
+            --bg-light: #f8faff;
+            --card-light: rgba(255, 255, 255, 0.95);
+            --header-height: 88px;
+        }
+
+        [data-theme="dark"] {
+            --bg: var(--bg-dark);
+            --card: var(--card-dark);
+            --text: #ffffff;
+            --text-light: #a0b0ff;
+        }
+
+        [data-theme="light"] {
+            --bg: var(--bg-light);
+            --card: var(--card-light);
+            --text: #111111;
+            --text-light: #444444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body,
+        #map {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100dvh;
+            overflow: hidden;
+            transition: background 0.6s ease;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            padding: 1.2rem;
+            backdrop-filter: blur(30px);
+            background: var(--bg);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 900;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tagline {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            color: var(--text-light);
+            margin-top: 4px;
+        }
+
+        #map {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            width: 100%;
+            height: calc(100dvh - var(--header-height));
+        }
+
+        .controls {
+            position: absolute;
+            top: calc(var(--header-height) + 16px);
+            left: 16px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn {
+            background: var(--card);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text);
+            padding: 12px 16px;
+            border-radius: 14px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all .28s;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #00ff88);
+            color: #000;
+            font-weight: 700;
+        }
+
+        .btn:hover {
+            transform: translateY(-4px);
+        }
+
+        .filter-bar {
+            position: absolute;
+            top: calc(var(--header-height) + 16px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card);
+            backdrop-filter: blur(20px);
+            padding: 12px;
+            border-radius: 24px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .filter-btn {
+            padding: 8px 14px;
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.06);
+            border: none;
+            color: var(--text);
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: #000;
+            font-weight: 700;
+        }
+
+        .search-box {
+            position: absolute;
+            top: calc(var(--header-height) + 90px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: 340px;
+            z-index: 1000;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 50px;
+            border: none;
+            background: var(--card);
+            backdrop-filter: blur(20px);
+            color: var(--text);
+            font-size: 1.05rem;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+        }
+
+        .sidebar {
+            position: fixed;
+            right: -420px;
+            top: 0;
+            width: 420px;
+            height: 100dvh;
+            background: var(--bg);
+            backdrop-filter: blur(30px);
+            transition: right .45s cubic-bezier(.22, 1, .36, 1);
+            z-index: 1100;
+            padding: 24px;
+            overflow-y: auto;
+            border-left: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .sidebar.open {
+            right: 0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            backdrop-filter: blur(20px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+            animation: fadeIn .4s;
+        }
+
+        .modal-content {
+            background: var(--bg);
+            width: 92%;
+            max-width: 720px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 30px 100px rgba(0, 212, 255, 0.08);
+        }
+
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 18px 32px;
+            border-radius: 16px;
+            font-weight: 800;
+            z-index: 3000;
+            opacity: 0;
+            transition: all 0.35s ease;
+            backdrop-filter: blur(12px);
+            text-align: center;
+            max-width: 80%;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+
+        .live-clock {
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            background: rgba(0, 212, 255, 0.08);
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+        }
+
+        footer {
+            position: fixed;
+            bottom: 12px;
+            left: 16px;
+            font-size: .75rem;
+            color: rgba(255, 255, 255, 0.45);
+            z-index: 1000;
+        }
+
+        .pulsing {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 22px rgba(0, 212, 255, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 212, 255, 0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(.98)
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1)
+            }
+        }
+
+        /* Card flip */
+        .flip-card {
+            perspective: 1000px;
+        }
+
+        .flip-card-inner {
+            transition: transform .6s;
+            transform-style: preserve-3d;
+        }
+
+        .flip-card.showback .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front,
+        .flip-card-back {
+            backface-visibility: hidden;
+            position: relative;
+        }
+
+        .flip-card-back {
+            transform: rotateY(180deg);
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+        }
+
+        /* AR overlay */
+        #arOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #arCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Small screens */
+        @media (max-width:768px) {
+            :root {
+                --header-height: 78px
+            }
+
+            header {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .controls {
+                top: calc(var(--header-height)+12px);
+                left: 50%;
+                transform: translateX(-50%);
+                flex-direction: row;
+                width: 92%;
+            }
+
+            .search-box {
+                top: calc(var(--header-height)+80px);
+                width: 92%;
+            }
+
+            .sidebar {
+                width: 100%;
+                right: -100%;
+            }
+        }
+    </style>
+</head>
+
+<body data-theme="dark">
+
+    <header>
+        <div>
+            <div class="logo">ChargePe</div>
+            <div class="tagline">Find • Reserve • Charge Instantly (Upgraded)</div>
+        </div>
+        <div style="display:flex; gap:12px; align-items:center;">
+            <div class="live-clock" id="clock">--:--</div>
+            <span id="availabilityBadge"
+                style="background:rgba(0,255,136,0.08);padding:8px 12px;border-radius:12px;font-weight:700">Loading...</span>
+            <span id="weather"
+                style="background:rgba(0,212,255,0.08);padding:8px 12px;border-radius:12px;font-weight:700">Loading...</span>
+            <button class="btn" onclick="toggleTheme()" style="padding:10px 12px;font-size:1.2rem;"><i
+                    class="fas fa-moon" id="themeIcon"></i></button>
+            <button class="btn" style="padding:10px 12px;font-size:1.2rem;">
+                <a href="dashboard.html" target="_blank"> <i class="bi bi-vignette" id="themeIcon"> </i></a>
+            </button>
+        </div>
+    </header>
+
+    <div id="map"></div>
+
+    <div class="controls">
+        <button class="btn btn-primary" onclick="locateUser()"><i class="fas fa-location-crosshairs"></i> Find
+            Nearby</button>
+        <button class="btn" onclick="toggleSidebar()"><i class="fas fa-bookmark"></i> My Bookings (<span
+                id="bookingCount">0</span>)</button>
+        <button class="btn" onclick="toggleAR()"><i class="fas fa-vector-square"></i> AR Overlay</button>
+    </div>
+
+    <div class="filter-bar" id="filterBar"></div>
+
+    <div class="search-box">
+        <input type="text" placeholder="Search city, mall, or address..." id="searchInput"
+            onkeypress="if(event.key==='Enter') geocodeAddress()" />
+    </div>
+
+    <div class="sidebar" id="sidebar">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="font-size:1.3rem; font-weight:800;">My Bookings</h2>
+            <button style="background:none;border:none;font-size:1.8rem;cursor:pointer;color:var(--text-light);"
+                onclick="toggleSidebar()">×</button>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-bottom:12px;">
+            <button class="btn" style="flex:1;background:#ff3b30;color:white;" onclick="clearAllBookings()">Clear
+                All</button>
+            <button class="btn" style="flex:1;" onclick="exportBookings()"><i class="fas fa-file-export"></i>
+                Export</button>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-bottom:8px;">
+            <input id="importFile" type="file" accept="application/json" style="display:none"
+                onchange="importBookings(event)" />
+            <button class="btn" onclick="document.getElementById('importFile').click()"><i
+                    class="fas fa-file-import"></i> Import</button>
+            <button class="btn" onclick="openThemeCustomizer()"><i class="fas fa-paint-roller"></i> Theme</button>
+        </div>
+
+        <div id="bookingsList" style="margin-top:8px;">
+            <p style="text-align:center;color:#888;margin-top:60px;">No bookings yet</p>
+        </div>
+
+        <hr style="margin:18px 0;border-color:rgba(255,255,255,0.04)" />
+        <h3 style="font-size:1rem;margin-bottom:8px;color:var(--text-light)">Frontend Extras</h3>
+        <p style="font-size:.9rem;color:rgba(255,255,255,0.7)">Try the AR overlay, export/import bookings, theme
+            customizer, offline caching (PWA), and animated simulator.</p>
+    </div>
+
+    <!-- Reserve / Simulator Modal -->
+    <div class="modal" id="reserveModal">
+        <div class="modal-content">
+            <button
+                style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:2rem;cursor:pointer;color:var(--text-light);"
+                onclick="closeModal('reserveModal')">×</button>
+            <div style="padding:20px;">
+                <div id="reserveCard" class="flip-card">
+                    <div class="flip-card-inner" style="padding:12px;">
+                        <div class="flip-card-front" style="background:var(--card);padding:18px;border-radius:12px;">
+                            <h2 style="margin:6px 0 8px;font-weight:800;">Reserve Slot</h2>
+                            <select id="vehicleSelect"
+                                style="width:100%;padding:12px;border-radius:10px;background:var(--bg);color:var(--text);border:1px solid rgba(255,255,255,0.04);margin-bottom:12px"></select>
+                            <div style="display:flex;gap:10px;">
+                                <div style="flex:1;background:rgba(0,0,0,0.04);padding:12px;border-radius:10px;">
+                                    Distance: <strong id="distance">--</strong> km</div>
+                                <div style="flex:1;background:rgba(0,0,0,0.04);padding:12px;border-radius:10px;">ETA:
+                                    <strong id="eta">--</strong> mins
+                                </div>
+                            </div>
+
+                            <div id="plans" style="display:grid;gap:10px;margin-top:14px"></div>
+                            <div style="display:flex;gap:8px;margin-top:14px;">
+                                <button class="btn" style="flex:1" onclick="prevStep()">← Back</button>
+                                <button class="btn btn-primary" style="flex:1" onclick="startSimulator()">Reserve &
+                                    Start Simulator →</button>
+                            </div>
+                        </div>
+                        <div class="flip-card-back"
+                            style="background:linear-gradient(180deg,#001022, #001830); padding:22px; border-radius:12px; color:white;">
+                            <h2 style="margin-bottom:10px;">Charging Simulator</h2>
+                            <div
+                                style="background:rgba(255,255,255,0.04);padding:12px;border-radius:10px;margin-bottom:12px">
+                                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                                    <div>Battery</div>
+                                    <div id="simBatteryPerc">10%</div>
+                                </div>
+                                <div style="height:14px;background:rgba(0,0,0,0.2);border-radius:8px;overflow:hidden;">
+                                    <div id="simBatteryBar"
+                                        style="height:100%;width:10%;background:linear-gradient(90deg,#00ff88,#00d4ff);transition:width .2s">
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="text-align:center;margin-bottom:10px">
+                                <div id="simKwh">0.0 kWh</div>
+                            </div>
+                            <div style="display:flex;gap:8px;"><button class="btn"
+                                    onclick="cancelSimulation()">Cancel</button><button class="btn btn-primary"
+                                    onclick="completeSimulation()">Finish & Invoice</button></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Modal -->
+    <div class="modal" id="invoiceModal">
+        <div class="modal-content" style="max-height:92vh;overflow:auto;padding:12px;">
+            <div id="invoicePreview"
+                style="background:white;color:black;padding:18px;border-radius:8px;min-height:60vh;"></div>
+            <div style="display:flex;gap:10px;margin:12px 0"><button class="btn btn-primary" style="flex:1"
+                    onclick="downloadInvoice()">Download PDF Invoice</button><button class="btn" style="flex:1"
+                    onclick="closeModal('invoiceModal')">Close</button></div>
+        </div>
+    </div>
+
+    <!-- AR Overlay -->
+    <div id="arOverlay">
+        <canvas id="arCanvas"></canvas>
+        <button style="position:absolute;top:18px;right:18px;z-index:2600;" class="btn" onclick="toggleAR()">Close
+            AR</button>
+    </div>
+
+    <div class="toast" id="toast">Ready</div>
+    <footer>© 2025 ChargePe • Frontend Upgrades • Offline-First</footer>
+
+    <audio id="clickSound" src="https://assets.mixkit.co/sfx/preview/mixkit-fast-click-1376.mp3"></audio>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // ------------------- App State -------------------
+        let map, userLocation = null, routeLayer = null, currentStation = null, currentBooking = null; let bookings = JSON.parse(localStorage.getItem('evBookings') || '[]'); const filters = { protocols: [], fast: false };
+        const vehicles = ["Tesla Model Y", "Tesla Model 3", "Hyundai Ioniq 6", "Kia EV9", "Tata Nexon EV Max", "MG ZS EV", "Ather 450X", "Ola S1 Pro"];
+        const plans = [{ name: "30 Minutes", price: 199, desc: "Quick top-up" }, { name: "1 Hour", price: 349, desc: "Standard session" }, { name: "2 Hours", price: 599, desc: "Long stay" }, { name: "Full Charge", price: 999, desc: "100% battery" }];
+
+        function playSound() { document.getElementById('clickSound').currentTime = 0; document.getElementById('clickSound').play().catch(() => { }); }
+
+        // ------------------- Map Init -------------------
+        function initMap() { map = L.map('map').setView([19.0760, 72.8777], 12); updateTileLayer(); updateClock(); setInterval(updateClock, 1000); loadBookings(); renderFilterBar(); registerSW(); }
+        function updateTileLayer() { map.eachLayer(l => { if (l.options?.maxZoom) map.removeLayer(l); }); const isDark = document.body.dataset.theme === 'dark'; L.tileLayer(isDark ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: isDark ? '© CartoDB' : '© OpenStreetMap', maxZoom: 19 }).addTo(map); }
+
+        function toggleTheme() { const newTheme = document.body.dataset.theme === 'light' ? 'dark' : 'light'; document.body.dataset.theme = newTheme; localStorage.setItem('evTheme', newTheme); document.getElementById('themeIcon').className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon'; updateTileLayer(); playSound(); }
+
+        // ------------------- Geolocation & Stations -------------------
+        function locateUser() { if (!navigator.geolocation) return showToast('Geolocation not supported'); navigator.geolocation.getCurrentPosition(pos => { userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude }; map.setView([userLocation.lat, userLocation.lng], 15); L.circleMarker([userLocation.lat, userLocation.lng], { radius: 10, color: '#00d4ff', fillOpacity: 0.8 }).addTo(map).bindPopup('You are here'); generateStationsAround(userLocation.lat, userLocation.lng); getWeatherAndCity(userLocation.lat, userLocation.lng); showToast('Location found – Stations loaded!'); }, () => { showToast('Using Mumbai as default'); userLocation = { lat: 19.0760, lng: 72.8777 }; generateStationsAround(19.0760, 72.8777); getWeatherAndCity(19.0760, 72.8777); }); }
+
+        async function getWeatherAndCity(lat, lng) { try { const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`).then(r => r.json()); const temp = Math.round(w.current.temperature_2m); const icons = ['☀️', '⛅', '☁️', '🌧️', '⛈️']; document.getElementById('weather').innerHTML = `${temp}°C ${icons[w.current.weather_code % 5] || '☁️'}`; const c = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, { headers: { 'User-Agent': 'ChargePe/1.0' } }).then(r => r.json()); document.getElementById('availabilityBadge').textContent = `${c.address.city || c.address.town || 'India'} • Live`; } catch (e) { document.getElementById('weather').textContent = 'Weather N/A'; } }
+
+        function generateStationsAround(lat, lng) { const names = ["Nexus", "Quantum", "Prime", "Elite", "Infinity", "Central", "Gateway", "Metro", "Hub", "Plaza"]; const areas = ["BKC", "Andheri", "Powai", "Bandra", "Worli", "Thane", "Vashi", "Goregaon", "Juhu", "Malad"]; const stations = []; for (let i = 0; i < 20; i++) { const angle = Math.random() * Math.PI * 2; const dist = 1 + Math.random() * 8; const latOff = dist * Math.cos(angle) / 110.57; const lngOff = dist * Math.sin(angle) / (111.32 * Math.cos(lat * Math.PI / 180)); const power = [50, 120, 150, 250, 350][Math.floor(Math.random() * 5)]; const proto = []; if (Math.random() > 0.3) proto.push('CCS2'); if (Math.random() > 0.4) proto.push('Type 2'); stations.push({ id: `S${i + 1}`, lat: lat + latOff, lng: lng + lngOff, name: `${names[i % 10]} • ${areas[i % 10]}`, power, protocols: proto.length ? proto : ['Type 2'], status: ['available', 'charging', 'reserved'][Math.floor(Math.random() * 3)], price: 16 + Math.floor(Math.random() * 8) }); } window.stations = stations; renderMarkers(); updateAvailabilityBadge(); }
+
+        function renderMarkers() { map.eachLayer(l => { if (l._icon || l._path) map.removeLayer(l); }); if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; } stations.forEach(st => { if (!passesFilter(st)) return; const color = st.status === 'available' ? '#00ff88' : st.status === 'charging' ? '#ff3b30' : '#ff9500'; const iconHtml = st.status === 'reserved' ? `<i class="fas fa-charging-station pulsing" style="color:${color};font-size:28px;"></i>` : `<i class="fas fa-charging-station" style="color:${color};font-size:28px;"></i>`; const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [36, 36], iconAnchor: [18, 36] }); L.marker([st.lat, st.lng], { icon }).bindPopup(getPopup(st)).addTo(map); }); }
+
+        function getPopup(st) { return `<div style="font-family:Inter;padding:6px"><div class="flip-card" style="width:260px"><div class="flip-card-inner" id="card-${st.id}"><div class="flip-card-front" style="padding:6px;background:transparent"><h4 style="margin:4px 0">${st.name}</h4><p><strong>${st.power} kW • ${st.protocols.join(' • ')}</strong></p><p>Status: <strong style="color:${st.status === 'available' ? '#0f0' : '#f80'}">${st.status.toUpperCase()}</strong></p><p>₹${st.price}/kWh</p>${st.status === 'available' ? `<button class="btn btn-primary" style="width:100%;margin-top:8px;padding:8px" onclick="openReservation('${st.id}')">Reserve Now</button>` : '<p style="color:#888;margin-top:8px">Currently unavailable</p>'}</div><div class="flip-card-back" style="padding:8px;background:transparent"></div></div></div></div>`; }
+
+        function openReservation(id) {
+            currentStation = stations.find(s => s.id === id); document.getElementById('reserveModal').classList.add('show'); document.getElementById('vehicleSelect').innerHTML = vehicles.map(v => `<option>${v}</option>`).join(''); updateDistance(); renderPlans(); playSound(); // flip to front
+            setTimeout(() => { const inner = document.querySelector('#card-' + id + ' .flip-card-inner'); if (inner) inner.style.transform = 'rotateY(0deg)'; }, 50);
+        }
+
+        function updateDistance() { if (!userLocation || !currentStation) return; const d = haversine(userLocation.lat, userLocation.lng, currentStation.lat, currentStation.lng).toFixed(1); document.getElementById('distance').textContent = d; document.getElementById('eta').textContent = Math.round(d * 2.2); drawRoute(); }
+
+        function drawRoute() { if (routeLayer) map.removeLayer(routeLayer); if (!userLocation || !currentStation) return; const url = `https://router.project-osrm.org/route/v1/driving/${userLocation.lng},${userLocation.lat};${currentStation.lng},${currentStation.lat}?overview=full&geometries=geojson`; fetch(url).then(r => r.json()).then(data => { if (data.routes?.[0]) { const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]); routeLayer = L.polyline(coords, { color: '#00d4ff', weight: 6, opacity: 0.8 }).addTo(map); map.fitBounds(routeLayer.getBounds().pad(0.2)); } }).catch(() => { routeLayer = L.polyline([[userLocation.lat, userLocation.lng], [currentStation.lat, currentStation.lng]], { color: '#00d4ff', weight: 5, dashArray: '8,8' }).addTo(map); }); }
+
+        function haversine(lat1, lon1, lat2, lon2) { const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180; const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(a)); }
+
+        function renderPlans() { document.getElementById('plans').innerHTML = plans.map(p => `<div style="background:var(--card);padding:10px;border-radius:10px;cursor:pointer;border:2px solid transparent" onclick="selectPlan(this,${p.price})"><strong>${p.name}</strong><br><small>${p.desc}</small><div style="float:right;font-size:1.1rem;font-weight:700;color:var(--primary)">₹${p.price}</div></div>`).join(''); }
+        window.selectPlan = (el, price) => { document.querySelectorAll('#plans > div').forEach(d => d.style.borderColor = 'transparent'); el.style.borderColor = '#00d4ff'; window.selectedPrice = price; };
+
+        function nextStep(n) { document.querySelector('.wizard-step?.active')?.classList?.remove('active'); document.getElementById('step' + n)?.classList?.add('active'); }
+        function prevStep() { document.getElementById('step2')?.classList?.remove('active'); document.getElementById('step1')?.classList?.add('active'); }
+
+        // ------------------- Simulator (frontend-only) -------------------
+        let simInterval = null; let simState = { perc: 10, kwh: 0, rate: 0.8 }; function startSimulator() {
+            if (!window.selectedPrice) return showToast('Select a plan'); // create booking placeholder
+            currentBooking = { id: Date.now(), station: currentStation, vehicle: document.getElementById('vehicleSelect').value, plan: plans.find(p => p.price === window.selectedPrice).name, amount: window.selectedPrice, time: new Date().toLocaleString('en-IN') };
+            bookings.push(currentBooking); localStorage.setItem('evBookings', JSON.stringify(bookings)); currentStation.status = 'reserved'; renderMarkers(); updateAvailabilityBadge(); loadBookings(); document.getElementById('reserveModal').querySelector('.flip-card-inner').style.transform = 'rotateY(180deg)'; playSound(); // start simulation
+            simState = { perc: 10, kwh: 0, rate: (currentStation.power / 60) * 0.5 }; // simplistic kW->kWh per min
+            document.getElementById('simBatteryPerc').textContent = simState.perc + '%'; document.getElementById('simBatteryBar').style.width = simState.perc + '%'; document.getElementById('simKwh').textContent = simState.kwh.toFixed(2) + ' kWh'; simInterval = setInterval(() => { simState.perc = Math.min(100, simState.perc + (Math.random() * 2 + 0.8)); simState.kwh += simState.rate * (Math.random() * 0.4 + 0.6); document.getElementById('simBatteryPerc').textContent = Math.round(simState.perc) + '%'; document.getElementById('simBatteryBar').style.width = Math.round(simState.perc) + '%'; document.getElementById('simKwh').textContent = simState.kwh.toFixed(2) + ' kWh'; if (simState.perc >= 100) { completeSimulation(); } }, 1200);
+        }
+
+        function cancelSimulation() {
+            clearInterval(simInterval); simInterval = null; // rollback booking but keep invoice option
+            showToast('Simulation cancelled'); document.getElementById('reserveModal').classList.remove('show'); playSound();
+        }
+        function completeSimulation() { clearInterval(simInterval); simInterval = null; currentBooking.time = new Date().toLocaleString('en-IN'); currentBooking.kwh = simState.kwh.toFixed(2); localStorage.setItem('evBookings', JSON.stringify(bookings)); currentStation.status = 'charging'; renderMarkers(); updateAvailabilityBadge(); loadBookings(); closeModal('reserveModal'); generateInvoice(currentBooking); showToast('Charging complete — Invoice ready'); playSound(); }
+
+        // ------------------- Invoice (improved) -------------------
+        function generateInvoice(b) {
+            const { jsPDF } = window.jspdf || {}; if (window.jspdf) { const doc = new window.jspdf.jsPDF(); doc.setFontSize(20); doc.text('CHARGEPE INVOICE', 105, 28, null, null, 'center'); doc.setFontSize(11); doc.text(`Booking ID: #${b.id}`, 20, 48); doc.text(`Date: ${b.time}`, 20, 58); doc.text(`Station: ${b.station.name}`, 20, 68); doc.text(`Vehicle: ${b.vehicle}`, 20, 78); doc.text(`Plan: ${b.plan}`, 20, 88); if (b.kwh) doc.text(`kWh: ${b.kwh}`, 20, 98); doc.setFontSize(16); doc.text(`Total: ₹${b.amount}`, 20, 118); const pdfData = doc.output('datauristring'); b.pdf = pdfData.split(',')[1]; localStorage.setItem('evBookings', JSON.stringify(bookings)); document.getElementById('invoicePreview').innerHTML = `<iframe src="${pdfData}" style="width:100%;height:60vh;border:none"></iframe>`; document.getElementById('invoiceModal').classList.add('show'); } else { // fallback simple HTML invoice
+                document.getElementById('invoicePreview').innerHTML = `<div style="padding:18px"><h2>CHARGEPE INVOICE</h2><p>Booking #${b.id}</p><p>${b.time}</p><p>${b.station.name}</p><p>${b.vehicle}</p><p>Plan: ${b.plan}</p><p>Total: ₹${b.amount}</p></div>`; document.getElementById('invoiceModal').classList.add('show');
+            }
+        }
+
+        function downloadInvoice() { if (currentBooking?.pdf) { const link = document.createElement('a'); link.href = 'data:application/pdf;base64,' + currentBooking.pdf; link.download = `ChargePe_Invoice_${currentBooking.id}.pdf`; link.click(); showToast('Invoice downloaded'); } else showToast('No PDF available — open invoice first'); }
+
+        function closeModal(id) { document.getElementById(id).classList.remove('show'); playSound(); }
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.remove('show'); // reset animation
+
+            requestAnimationFrame(() => {
+                t.classList.add('show');
+            });
+
+            clearTimeout(window.toastTimer);
+            window.toastTimer = setTimeout(() => {
+                t.classList.remove('show');
+            }, 3800);
+        }
+
+        function updateClock() { document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }); }
+        function updateAvailabilityBadge() { const avail = stations?.filter(s => s.status === 'available').length || 0; document.getElementById('availabilityBadge').textContent = `${avail}/20 Available`; }
+
+        function loadBookings() { const list = document.getElementById('bookingsList'); const count = document.getElementById('bookingCount'); count.textContent = bookings.length; if (bookings.length === 0) { list.innerHTML = "<p style='text-align:center;color:#888;margin-top:80px;'>No active bookings</p>"; return; } list.innerHTML = bookings.map(b => `<div style="background:var(--card);padding:12px;margin:10px 0;border-radius:12px"><h4>${b.station.name}</h4><p>${b.vehicle} • ${b.plan} • ₹${b.amount}</p><p style="font-size:.85rem;color:#888">${b.time}</p><div style="display:flex;gap:6px;margin-top:8px"><button class="btn" onclick="map.setView([${b.station.lat},${b.station.lng}],17); toggleSidebar();">Show on Map</button><button class="btn" onclick="openInvoice(${b.id})">Invoice</button></div></div>`).join(''); }
+
+        function openInvoice(id) { const b = bookings.find(x => x.id == id); if (!b) return showToast('Invoice not found'); currentBooking = b; generateInvoice(b); }
+
+        function clearAllBookings() {
+            if (!confirm('Clear all your bookings?')) return;
+
+            // Load saved bookings
+            const saved = JSON.parse(localStorage.getItem('evBookings') || '[]');
+
+            if (!saved.length) {
+                showToast('No active bookings found.', 'info');
+                return;
+            }
+
+            // Reset only booked stations
+            saved.forEach(b => {
+                const st = stations.find(s => s.id === b.stationId);
+                if (st) {
+                    st.status = 'available';
+                    st.activeSession = null;
+                    st.currentUser = null;
+                    st.bookingTime = null;
+                    st.reservedUntil = null;
+                    st.inUse = false;
+                }
+            });
+
+            // Clear only user's bookings list
+            bookings = [];
+            localStorage.removeItem('evBookings');
+
+            // Update UI + map
+            renderMarkers();
+            updateAvailabilityBadge();
+            loadBookings();
+
+            showToast('Your booked stations were cleared.', 'success');
+        }
+
+
+        function passesFilter(st) { if (filters.protocols.length && !st.protocols.some(p => filters.protocols.includes(p))) return false; if (filters.fast && st.power < 50) return false; return true; }
+
+        function renderFilterBar() { const filtersList = ['CCS2', 'Type 2', 'CHAdeMO', 'Fast ≥150kW']; document.getElementById('filterBar').innerHTML = filtersList.map(f => `<button class="filter-btn" onclick="toggleFilter('${f}', event)">${f}</button>`).join(''); }
+        window.toggleFilter = (f, event) => { const btn = event.target; btn.classList.toggle('active'); if (f === 'Fast ≥150kW') filters.fast = btn.classList.contains('active'); else { if (btn.classList.contains('active')) !filters.protocols.includes(f) && filters.protocols.push(f); else filters.protocols = filters.protocols.filter(p => p !== f); } renderMarkers(); playSound(); };
+
+        function geocodeAddress() { const q = document.getElementById('searchInput').value.trim(); if (!q) return; fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`, { headers: { 'User-Agent': 'ChargePe/1.0' } }).then(r => r.json()).then(data => { if (data[0]) { const { lat, lon } = data[0]; userLocation = { lat: +lat, lng: +lon }; map.setView([lat, lon], 15); generateStationsAround(+lat, +lon); getWeatherAndCity(+lat, +lon); showToast('Location updated!'); } }); }
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); loadBookings(); playSound(); }
+
+        // ------------------- Export / Import -------------------
+        function exportBookings() { const data = JSON.stringify(bookings, null, 2); const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'chargepe_bookings.json'; a.click(); URL.revokeObjectURL(url); showToast('Bookings exported'); }
+        function importBookings(e) { const f = e.target.files[0]; if (!f) return; const reader = new FileReader(); reader.onload = () => { try { const imported = JSON.parse(reader.result); if (Array.isArray(imported)) { bookings = imported; localStorage.setItem('evBookings', JSON.stringify(bookings)); loadBookings(); showToast('Bookings imported'); } else showToast('Invalid file'); } catch (err) { showToast('Import failed'); } }; reader.readAsText(f); }
+
+        // ------------------- AR Overlay (Camera + simple pointer) -------------------
+        let arActive = false; let arStream = null; const arCanvas = document.getElementById('arCanvas'); const arCtx = arCanvas?.getContext?.('2d'); async function toggleAR() {
+            if (arActive) { stopAR(); return; } if (!userLocation) return showToast('Set your location first'); try {
+                arStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }); const video = document.createElement('video'); video.srcObject = arStream; video.play(); document.getElementById('arOverlay').style.display = 'flex'; arActive = true; arCanvas.width = window.innerWidth; arCanvas.height = window.innerHeight; (function loop() {
+                    if (!arActive) return; arCtx.clearRect(0, 0, arCanvas.width, arCanvas.height); try { arCtx.drawImage(video, 0, 0, arCanvas.width, arCanvas.height); } catch (e) { } // draw pointer to nearest available station
+                    const target = getNearestAvailable(); if (target) {
+                        const angle = computeBearing(userLocation.lat, userLocation.lng, target.lat, target.lng); // draw simple arrow at top center rotated
+                        arCtx.save(); arCtx.translate(arCanvas.width / 2, 120); arCtx.rotate((angle - 90) * Math.PI / 180); arCtx.fillStyle = 'rgba(0,212,255,0.9)'; arCtx.beginPath(); arCtx.moveTo(0, -30); arCtx.lineTo(20, 15); arCtx.lineTo(0, 5); arCtx.lineTo(-20, 15); arCtx.closePath(); arCtx.fill(); arCtx.restore(); arCtx.fillStyle = 'white'; arCtx.fillText(target.name, arCanvas.width / 2 - 40, 170);
+                    }
+                    requestAnimationFrame(loop);
+                })(); showToast('AR overlay active');
+            } catch (err) { showToast('Camera unavailable'); }
+        }
+        function stopAR() { arActive = false; document.getElementById('arOverlay').style.display = 'none'; if (arStream) { arStream.getTracks().forEach(t => t.stop()); arStream = null; } showToast('AR closed'); }
+        function computeBearing(lat1, lon1, lat2, lon2) { const y = Math.sin((lon2 - lon1) * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180); const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) - Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos((lon2 - lon1) * Math.PI / 180); const brng = Math.atan2(y, x) * 180 / Math.PI; return (brng + 360) % 360; }
+        function getNearestAvailable() { return (stations || []).filter(s => s.status === 'available').sort((a, b) => haversine(userLocation.lat, userLocation.lng, a.lat, a.lng) - haversine(userLocation.lat, userLocation.lng, b.lat, b.lng))[0]; }
+
+        // ------------------- Service Worker (inline blob) -------------------
+        function registerSW() { if ('serviceWorker' in navigator) { const swCode = `self.addEventListener('install', e=>{ const assets=['/','/index.html']; e.waitUntil(caches.open('chargepe-static-v1').then(c=>c.addAll(assets))); }); self.addEventListener('fetch', e=>{ e.respondWith(caches.match(e.request).then(r=> r || fetch(e.request).then(res=>{ return caches.open('chargepe-static-v1').then(cache=>{ try{ cache.put(e.request, res.clone()); }catch(err){} return res; }); } ) ).catch(()=>caches.match('/'))); });`; const blob = new Blob([swCode], { type: 'text/javascript' }); const swUrl = URL.createObjectURL(blob); navigator.serviceWorker.register(swUrl).then(() => console.log('SW registered inline')).catch(() => console.log('SW failed')); } }
+
+        // ------------------- Theme Customizer -------------------
+        function openThemeCustomizer() { const color = prompt('Enter primary color hex (e.g. #00d4ff):', localStorage.getItem('evPrimary') || '#00d4ff'); if (color) { document.documentElement.style.setProperty('--primary', color); localStorage.setItem('evPrimary', color); showToast('Theme updated'); } }
+
+        // ------------------- PWA Hint -------------------
+        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); window.deferredPrompt = e; showToast('Install available — use browser menu to install'); });
+
+        // ------------------- Offline encryption helper (simple) -------------------
+        function simpleEncrypt(str) { try { return btoa(unescape(encodeURIComponent(str))); } catch (e) { return str; } }
+        function simpleDecrypt(b) { try { return decodeURIComponent(escape(atob(b))); } catch (e) { return b; } }
+
+        // ------------------- Service startup -------------------
+        const savedTheme = localStorage.getItem('evTheme') || 'dark'; document.body.dataset.theme = savedTheme; document.getElementById('themeIcon').className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        window.onload = () => { initMap(); setTimeout(locateUser, 800); renderPlans(); };
+
+        // ------------------- small helpers to satisfy linting -------------------
+        // load jsPDF lazily for invoices
+        (function () { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; document.head.appendChild(s); })();
+    </script>
+
+    <!-- Modules for advanced frontend features -->
+    <script id="module-1-simulation-engine">
+        // --- EV Charger Slot “Live Simulation Engine” ---
+        // This engine makes every station feel alive with dynamic availability,
+        // health, power fluctuations, and random failures.
+
+        // Global simulation configuration
+        const SIM_CONFIG = {
+            interval: 5000, // how often simulation updates run (ms)
+            failureChance: 0.04, // 4% chance per cycle a charger goes offline
+            recoveryChance: 0.25, // 25% chance offline charger recovers
+            fluctuationRange: 18, // +/- kW fluctuations
+        };
+
+        // Storage for charger states
+        let chargerSimulationState = {};
+
+        // Initialize simulation for each station (simple structure)
+        function initChargerSimulation(stations) {
+            stations.forEach((station) => {
+                chargerSimulationState[station.id] = {
+                    basePower: station.power, // 30–350 kW
+                    currentPower: station.power,
+                    available: station.available, // true/false
+                    health: 100,
+                    overheating: false,
+                    offline: false,
+                };
+            });
+
+            // Start simulation loop
+            setInterval(updateChargerSimulation, SIM_CONFIG.interval);
+        }
+
+        // Main simulation logic
+        function updateChargerSimulation() {
+            Object.keys(chargerSimulationState).forEach((id) => {
+                let s = chargerSimulationState[id];
+
+                // Random failure event
+                if (!s.offline && Math.random() < SIM_CONFIG.failureChance) {
+                    s.offline = true;
+                    s.available = false;
+                    s.currentPower = 0;
+                    s.health -= 20;
+                    addSimulationEvent(id, "⚠️ Charger went offline!");
+                }
+
+                // Recovery event
+                if (s.offline && Math.random() < SIM_CONFIG.recoveryChance) {
+                    s.offline = false;
+                    s.available = true;
+                    s.health += 10;
+                    s.currentPower = s.basePower;
+                    addSimulationEvent(id, "🔌 Charger recovered and is online.");
+                }
+
+                // Power fluctuation
+                if (!s.offline) {
+                    const fluct = (Math.random() * SIM_CONFIG.fluctuationRange) - (SIM_CONFIG.fluctuationRange / 2);
+                    s.currentPower = Math.max(10, s.basePower + fluct);
+                }
+
+                // Overheating chance if power is high
+                if (!s.offline && s.currentPower > s.basePower + 10 && Math.random() < 0.2) {
+                    s.overheating = true;
+                    s.health -= 5;
+                    addSimulationEvent(id, "🔥 Overheating detected — performance reduced.");
+                } else {
+                    s.overheating = false;
+                }
+
+                // Auto-regenerate small health over time
+                if (!s.offline && s.health < 100) {
+                    s.health += 1;
+                }
+
+                // Apply visual UI changes
+                updateStationMarkerAppearance(id);
+            });
+        }
+
+        // Log events (can later create UI panel)
+        function addSimulationEvent(id, text) {
+            console.log(`[Station ${id}] ${text}`);
+        }
+
+        // Update the map marker visuals (placeholder function)
+        function updateStationMarkerAppearance(id) {
+            // You can style glow, color, or marker icon dynamically here.
+            // Example: neon glow for high power, red for offline.
+            // This placeholder is left for later implementation.
+        }
+
+    </script>
+
+    <script id="module-3-ai-station-choice">
+        // --- Module 3: AI-like Auto-Choosing Station (Heuristic, frontend-only) ---
+        // Scores stations based on distance, price, power, simulated congestion, health, and vehicle preference.
+
+        const AI_WEIGHTS = {
+            distance: 0.35, // lower distance better
+            price: 0.2,     // lower price better
+            power: 0.2,     // higher power better
+            health: 0.15,   // higher health better
+            status: 0.1     // available preferred
+        };
+
+        function scoreStation(station, userLatLng, vehicleType) {
+            const maxDist = 20; // km, used to normalize
+            const dist = userLatLng ? haversine(userLatLng.lat, userLatLng.lng, station.lat, station.lng) : maxDist;
+            const distScore = Math.max(0, 1 - dist / maxDist); // 0..1
+
+            const priceMax = 40; // normalize assuming prices within 0..40
+            const priceScore = Math.max(0, 1 - station.price / priceMax);
+
+            const powerMax = 350;
+            const powerScore = Math.min(1, station.power / powerMax);
+
+            const sim = chargerSimulationState[station.id] || { health: 100, offline: false };
+            const healthScore = Math.max(0, Math.min(1, sim.health / 100));
+
+            const statusScore = station.status === 'available' && !sim.offline ? 1 : station.status === 'charging' ? 0.45 : 0; // reserved/offline poor
+
+            // Vehicle bias: prefer fast chargers for long-range EVs (very simple heuristics)
+            let vehicleBias = 1.0;
+            if (vehicleType && /Tesla|EV9|Ioniq|Model/i.test(vehicleType)) {
+                vehicleBias = station.power >= 150 ? 1.05 : 0.95;
+            } else if (vehicleType && /Ather|Ola|450X|S1 Pro/i.test(vehicleType)) {
+                vehicleBias = station.power <= 120 ? 1.02 : 0.95;
+            }
+
+            // Combine weighted score
+            const score = (
+                distScore * AI_WEIGHTS.distance +
+                priceScore * AI_WEIGHTS.price +
+                powerScore * AI_WEIGHTS.power +
+                healthScore * AI_WEIGHTS.health +
+                statusScore * AI_WEIGHTS.status
+            ) * vehicleBias;
+
+            // Return components for explanation
+            return {
+                id: station.id,
+                score,
+                components: { distScore, priceScore, powerScore, healthScore, statusScore, vehicleBias }
+            };
+        }
+
+        function recommendBestStation(opts = {}) {
+            const userPos = opts.userLocation || userLocation || null;
+            const vehicle = opts.vehicle || (document.getElementById('vehicleSelect')?.value) || null;
+            const list = (window.stations || []).filter(s => s); // copy
+            const scored = list.map(s => scoreStation(s, userPos, vehicle));
+            scored.sort((a, b) => b.score - a.score);
+            const top = scored.slice(0, 5);
+
+            // Show UI panel with the top 5 recommendations and explanation
+            showRecommendationPanel(top, vehicle, userPos);
+
+            // Highlight the best station on the map with a glowing marker
+            if (top[0]) highlightStationOnMap(top[0].id);
+
+            return top;
+        }
+
+        function createRecommendButton() {
+            if (document.getElementById('recommendBtn')) return;
+            const btn = document.createElement('button');
+            btn.id = 'recommendBtn';
+            btn.className = 'btn';
+            btn.style.position = 'absolute';
+            btn.style.top = '66px';
+            btn.style.right = '16px';
+            btn.style.zIndex = 2200;
+            btn.innerHTML = '<i class="fas fa-bolt"></i> Recommend';
+            btn.onclick = () => { playSound(); const res = recommendBestStation(); console.log('Recommendations:', res); };
+            document.body.appendChild(btn);
+        }
+
+        function showRecommendationPanel(topList, vehicle, userPos) {
+            let panel = document.getElementById('aiRecommendPanel');
+            if (!panel) {
+                panel = document.createElement('div');
+                panel.id = 'aiRecommendPanel';
+                panel.style.position = 'absolute';
+                panel.style.right = '16px';
+                panel.style.top = '120px';
+                panel.style.zIndex = 2300;
+                panel.style.width = '300px';
+                panel.style.background = 'var(--card)';
+                panel.style.padding = '12px';
+                panel.style.borderRadius = '12px';
+                panel.style.boxShadow = '0 12px 40px rgba(0,0,0,0.45)';
+                document.body.appendChild(panel);
+            }
+            panel.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong style="font-size:1rem">Top Recommendations</strong><button class='btn' style='padding:6px 8px' onclick="document.getElementById('aiRecommendPanel').remove()">Close</button></div>`;
+
+            topList.forEach((t, idx) => {
+                const st = (window.stations || []).find(s => s.id === t.id);
+                const scorePct = Math.round(t.score * 100);
+                const explanation = `Dist:${Math.round(t.components.distScore * 100)}% Price:${Math.round(t.components.priceScore * 100)}% Power:${Math.round(t.components.powerScore * 100)}% Health:${Math.round(t.components.healthScore * 100)}% Status:${Math.round(t.components.statusScore * 100)}% Bias:${(t.components.vehicleBias).toFixed(2)}`;
+                const div = document.createElement('div');
+                div.style.marginBottom = '10px';
+                div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${idx + 1}. ${st.name}</strong><div style='font-size:.85rem;color:var(--text-light)'>${st.power} kW • ₹${st.price}/kWh</div></div><div style='text-align:right'><div style='font-weight:800'>${scorePct}%</div><button class='btn' style='margin-top:6px' onclick="zoomToAndReserve('${st.id}')">Go & Reserve</button></div></div><div style='font-size:.75rem;color:#9aa6ff;margin-top:6px'>${explanation}</div>`;
+                panel.appendChild(div);
+            });
+        }
+
+        function highlightStationOnMap(id) {
+            // find station and open popup + panTo
+            const st = (window.stations || []).find(s => s.id === id);
+            if (!st) return;
+            map.setView([st.lat, st.lng], 15);
+            // find marker by latlng — Leaflet doesn't expose marker by data so we just open popup via new temporary marker
+            const mk = L.circleMarker([st.lat, st.lng], { radius: 18, color: '#ffd700', weight: 4, fillOpacity: 0.1 }).addTo(map);
+            setTimeout(() => { map.removeLayer(mk); }, 6000);
+        }
+
+        function zoomToAndReserve(id) {
+            const st = (window.stations || []).find(s => s.id === id);
+            if (!st) return showToast('Station not found');
+            map.setView([st.lat, st.lng], 16);
+            toggleSidebar();
+            // Auto-open reservation
+            setTimeout(() => { openReservation(id); }, 600);
+        }
+
+        // Create the recommend button on load
+        createRecommendButton();
+
+    </script>
+
+    <script id="module-6-sound-effects">
+        // --- Module 6: Sound Effects (Frontend Only) ---
+        // Lightweight audio engine for UI, notifications, and immersive EV ambience.
+        // Includes toggle button, sound packs, and safe autoplay handling.
+
+        window.soundsEnabled = false;
+
+        // Preload sounds (base64 to avoid CORS issues)
+        const SOUND_FILES = {
+            click: new Audio('data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...'),
+            success: new Audio('data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCB...'),
+            error: new Audio('data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCC...'),
+            pulse: new Audio('data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCD...'),
+            ambient: new Audio('data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCE...') // looped
+        };
+
+        // Ambient sound loop
+        SOUND_FILES.ambient.loop = true;
+        SOUND_FILES.ambient.volume = 0.35;
+
+        function playSound(name) {
+            if (!window.soundsEnabled) return;
+            const s = SOUND_FILES[name];
+            if (!s) return;
+            try { s.currentTime = 0; s.play(); } catch (e) { }
+        }
+
+        function toggleAmbient(on) {
+            try {
+                if (on) SOUND_FILES.ambient.play();
+                else SOUND_FILES.ambient.pause();
+            } catch (e) { }
+        }
+
+        function createSoundToggle() {
+            if (document.getElementById('soundBtn')) return;
+            const btn = document.createElement('button');
+            btn.id = 'soundBtn';
+            btn.className = 'btn';
+            btn.style.position = 'absolute';
+            btn.style.top = '216px';
+            btn.style.right = '16px';
+            btn.style.zIndex = 2200;
+            btn.innerHTML = '<i class="fas fa-volume-up"></i> Sound';
+
+            btn.onclick = async () => {
+                window.soundsEnabled = !window.soundsEnabled;
+                btn.classList.toggle('active');
+                playSound('pulse');
+                toggleAmbient(window.soundsEnabled);
+            };
+
+            document.body.appendChild(btn);
+        }
+
+        function bindSoundEvents() {
+            document.addEventListener('click', (e) => {
+                if (!window.soundsEnabled) return;
+                if (e.target.classList.contains('btn')) playSound('click');
+            });
+
+            // Reservation confirmation if present
+            const origReserve = window.confirmReservation;
+            if (typeof origReserve === 'function') {
+                window.confirmReservation = function (...args) {
+                    playSound('success');
+                    return origReserve.apply(this, args);
+                };
+            }
+        }
+
+        // Initialize
+        createSoundToggle();
+        bindSoundEvents();
+
+    </script>
+    <script id="module-7-frontend-security">
+        // --- Module 7: Frontend Security Layer (PIN Lock + Fake Face Unlock UI) ---
+        // Pure frontend security for optional app locking using localStorage.
+        // Includes PIN lock screen, unlock animations, and optional webcam face frame UI.
+
+        // ---------------- CONFIG ----------------
+        const SECURITY_CONFIG = {
+            enabled: true,
+            requireOnStart: false, // set true to force lock at launch
+            useFaceUI: true // visual-only, no real recognition
+        };
+
+        // ----------- STATE -----------
+        let securityLocked = false;
+        let storedPin = localStorage.getItem('app_pin') || null;
+
+        // ----------- UI CREATION -----------
+        function createLockScreen() {
+            if (document.getElementById('lockScreen')) return;
+            const div = document.createElement('div');
+            div.id = 'lockScreen';
+            div.style.position = 'fixed';
+            div.style.inset = '0';
+            div.style.zIndex = '5000';
+            div.style.background = 'linear-gradient(135deg,#0a0f1e,#111a2e,#000)';
+            div.style.display = 'flex';
+            div.style.flexDirection = 'column';
+            div.style.justifyContent = 'center';
+            div.style.alignItems = 'center';
+            div.style.color = 'white';
+            div.style.backdropFilter = 'blur(4px)';
+            div.innerHTML = `
+    <div style="text-align:center;margin-bottom:20px">
+      <h2 style="margin-bottom:4px">App Locked</h2>
+      <p style="color:#9bb1ff">Enter your PIN to continue</p>
+    </div>
+
+    <input id="pinInput" type="password" maxlength="6" 
+      style="padding:12px 18px;font-size:1.2rem;letter-spacing:4px;border-radius:12px;border:none;outline:none;margin-bottom:12px;text-align:center"/>
+
+    <button class="btn" style="margin-bottom:18px" onclick="unlockWithPin()">Unlock</button>
+
+    <button class="btn" onclick="promptSetPin()">Set / Change PIN</button>
+
+    ${SECURITY_CONFIG.useFaceUI ? `<div id="faceFrame" style="margin-top:40px;width:150px;height:150px;border:4px solid rgba(0,212,255,0.4);border-radius:50%;animation:facePulse 2s infinite"></div>` : ''}
+  `;
+
+            document.body.appendChild(div);
+        }
+
+        // Face frame animation
+        const facePulseCSS = `
+@keyframes facePulse {
+  0%{transform:scale(1);opacity:0.8}
+  50%{transform:scale(1.08);opacity:1}
+  100%{transform:scale(1);opacity:0.8}
+}`;
+        (function () {
+            if (!document.getElementById('facePulseCSS')) {
+                const st = document.createElement('style'); st.id = 'facePulseCSS'; st.textContent = facePulseCSS; document.head.appendChild(st);
+            }
+        })();
+
+        // -------- PIN FUNCTIONS --------
+        function promptSetPin() {
+            const p = prompt('Enter new 4–6 digit PIN');
+            if (!p || p.length < 4 || p.length > 6) {
+                alert('PIN must be 4–6 digits');
+                return;
+            }
+            storedPin = p;
+            localStorage.setItem('app_pin', p);
+            alert('PIN updated');
+        }
+
+        function unlockWithPin() {
+            const input = document.getElementById('pinInput').value;
+            if (!storedPin) return alert('No PIN set. Click "Set PIN".');
+
+            if (input === storedPin) {
+                securityLocked = false;
+                hideLockScreen();
+                if (window.soundsEnabled) playSound('success');
+                if (window.hapticsEnabled) haptic([40, 40]);
+            } else {
+                if (window.soundsEnabled) playSound('error');
+                if (window.hapticsEnabled) haptic([80, 40, 80]);
+                shakePinInput();
+            }
+        }
+
+        function shakePinInput() {
+            const i = document.getElementById('pinInput');
+            i.style.animation = 'shake .4s';
+            setTimeout(() => i.style.animation = '', 400);
+        }
+
+        // Shake animation CSS
+        (function () {
+            if (!document.getElementById('shakeCSS')) {
+                const cs = document.createElement('style'); cs.id = 'shakeCSS'; cs.textContent = `
+    @keyframes shake {0%{transform:translateX(0)}25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-8px)}100%{transform:translateX(0)}}
+  `; document.head.appendChild(cs);
+            }
+        })();
+
+        // -------- LOCK / UNLOCK --------
+        function hideLockScreen() {
+            const div = document.getElementById('lockScreen');
+            if (div) div.remove();
+        }
+
+        function lockApp() {
+            securityLocked = true;
+            createLockScreen();
+        }
+
+        // -------- SECURITY BUTTON --------
+        function createSecurityToggle() {
+            if (document.getElementById('securityBtn')) return;
+            const btn = document.createElement('button');
+            btn.id = 'securityBtn';
+            btn.className = 'btn';
+            btn.style.position = 'absolute';
+            btn.style.top = '266px';
+            btn.style.right = '16px';
+            btn.style.zIndex = 2200;
+            btn.innerHTML = '<i class="fas fa-lock"></i> Lock';
+            btn.onclick = () => lockApp();
+            document.body.appendChild(btn);
+        }
+
+        // --------- INITIALIZE ---------
+        createSecurityToggle();
+        if (SECURITY_CONFIG.requireOnStart && SECURITY_CONFIG.enabled) { lockApp(); }
+
+    </script>
+    <script id="module-8-color-theme-extraction">
+        // TODO: Implement Camera-Based Color Theme Extraction
+    </script>
+    <script id="module-9-animated-loaders">
+        // TODO: Implement Animated Loading Screens
+    </script>
+    <script id="module-10-weather-overlay">
+        // TODO: Implement Weather Overlay Effects
+    </script>
+    <script id="module-11-drag-drop-dashboard">
+        // TODO: Implement Drag-and-Drop Dashboard
+    </script>
+    <script id="module-12-offline-station-packs">
+        // TODO: Implement Offline Station Packs
+    </script>
+    <script id="module-13-gyroscope-compass">
+        // TODO: Implement Gyroscope Compass
+    </script>
+    <script id="module-14-ev-insight-dashboard">
+        // TODO: Implement EV Insight Dashboard
+    </script>
+    <script id="module-15-festival-themes">
+        // TODO: Implement Festival-Themed UI Packs
+    </script>
+    <script id="module-16-video-backgrounds">
+        // TODO: Implement Video Backgrounds
+    </script>
+    <script id="module-17-tilt-parallax-ui">
+        // TODO: Implement Tilt-Based Parallax UI
+    </script>
+    <script id="module-18-particle-effects">
+        // TODO: Implement Particle Trails
+    </script>
+    <script id="module-19-glassmorphism-pro">
+        // TODO: Implement Glassmorphism Pro Mode
+    </script>
+    <script id="module-20-multi-map-mode">
+        // TODO: Implement Multi-Map Mode
+    </script>
+    <script id="module-8-camera-theme">
+        // --- Module 8: Camera-Based Dynamic Theme Extraction ---
+        // Captures webcam color data and applies dynamic UI theming.
+
+        window.themeCamActive = false;
+        let themeStream = null;
+
+        function createThemeCameraButton() {
+            if (document.getElementById('themeCamBtn')) return;
+            const btn = document.createElement('button');
+            btn.id = 'themeCamBtn';
+            btn.className = 'btn';
+            btn.style.position = 'absolute';
+            btn.style.top = '316px';
+            btn.style.right = '16px';
+            btn.style.zIndex = 2200;
+            btn.innerHTML = '<i class="fas fa-camera"></i> Theme Cam';
+            btn.onclick = () => toggleThemeCamera();
+            document.body.appendChild(btn);
+        }
+
+        async function toggleThemeCamera() {
+            if (window.themeCamActive) { stopThemeCamera(); return; }
+            try {
+                themeStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                window.themeCamActive = true;
+                startThemeScan();
+            } catch (e) { alert('Camera permission denied'); }
+        }
+
+        function stopThemeCamera() {
+            window.themeCamActive = false;
+            if (themeStream) { themeStream.getTracks().forEach(t => t.stop()); }
+            removeThemePreview();
+        }
+
+        function startThemeScan() {
+            const video = document.createElement('video');
+            video.style.position = 'fixed';
+            video.style.bottom = '20px';
+            video.style.right = '20px';
+            video.style.width = '120px';
+            video.style.border = '3px solid rgba(0,212,255,0.5)';
+            video.style.borderRadius = '12px';
+            video.style.zIndex = 3000;
+            video.id = 'themeCamPreview';
+            video.srcObject = themeStream;
+            video.autoplay = true;
+            document.body.appendChild(video);
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            function scan() {
+                if (!window.themeCamActive) return;
+                if (video.videoWidth === 0) return requestAnimationFrame(scan);
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+                const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+                const avg = { r: 0, g: 0, b: 0 }; let count = 0;
+                for (let i = 0; i < data.length; i += 40) {
+                    avg.r += data[i];
+                    avg.g += data[i + 1];
+                    avg.b += data[i + 2];
+                    count++;
+                }
+
+                avg.r = Math.floor(avg.r / count);
+                avg.g = Math.floor(avg.g / count);
+                avg.b = Math.floor(avg.b / count);
+
+                applyThemeColor(`rgb(${avg.r},${avg.g},${avg.b})`);
+                requestAnimationFrame(scan);
+            }
+            scan();
+        }
+
+        function removeThemePreview() {
+            const v = document.getElementById('themeCamPreview');
+            if (v) v.remove();
+        }
+
+        function applyThemeColor(rgb) {
+            document.body.style.background = `linear-gradient(135deg, ${rgb}, #000)`;
+        }
+
+        createThemeCameraButton();
+    </script>
+
+    <script id="module-10-weather-theme">
+        // --- Module 10: Real‑Time Weather‑Based Theming (Frontend-Only, No API Key Required) ---
+        // Uses free Open-Meteo endpoint (no key) or falls back to time-of-day simulation.
+        // Adjusts UI colors, glow, gradients, and button accents based on weather + light.
+
+        (function () {
+            const API = (lat, lon) => `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+
+            async function fetchWeatherTheme() {
+                try {
+                    const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
+                    const { latitude, longitude } = pos.coords;
+                    const url = API(latitude, longitude);
+                    const data = await (await fetch(url)).json();
+                    const w = data.current_weather;
+                    applyWeatherTheme(w);
+                } catch (e) {
+                    console.warn('Weather fallback', e);
+                    applyFallbackTheme();
+                }
+            }
+
+            function applyWeatherTheme(w) {
+                const code = w.weathercode;
+                let theme;
+
+                if (code >= 0 && code <= 3) theme = 'clear';
+                else if (code >= 45 && code <= 48) theme = 'fog';
+                else if (code >= 51 && code <= 67) theme = 'drizzle';
+                else if (code >= 71 && code <= 77) theme = 'snow';
+                else if (code >= 80 && code <= 82) theme = 'rain';
+                else if (code >= 95 && code <= 99) theme = 'storm';
+                else theme = 'clear';
+
+                setTheme(theme);
+            }
+
+            function applyFallbackTheme() {
+                const hour = new Date().getHours();
+                if (hour >= 6 && hour < 18) setTheme('clear');
+                else setTheme('night');
+            }
+
+            function setTheme(type) {
+                const root = document.documentElement;
+                const body = document.body;
+
+                const themes = {
+                    clear: {
+                        bg: 'linear-gradient(135deg,#4ecbff,#0077ff)',
+                        neon: '0,212,255',
+                    },
+                    rain: {
+                        bg: 'linear-gradient(135deg,#3b4a6b,#1f2a3d)',
+                        neon: '0,140,255',
+                    },
+                    storm: {
+                        bg: 'linear-gradient(135deg,#1a1a1a,#000000)',
+                        neon: '255,215,0',
+                    },
+                    snow: {
+                        bg: 'linear-gradient(135deg,#d9f1ff,#a6d9ff)',
+                        neon: '200,240,255',
+                    },
+                    fog: {
+                        bg: 'linear-gradient(135deg,#b9c3cc,#8b99a6)',
+                        neon: '180,180,200',
+                    },
+                    drizzle: {
+                        bg: 'linear-gradient(135deg,#728aa0,#4d6275)',
+                        neon: '120,180,255',
+                    },
+                    night: {
+                        bg: 'linear-gradient(135deg,#020611,#000)',
+                        neon: '0,160,255',
+                    }
+                };
+
+                const t = themes[type] || themes.clear;
+
+                body.style.background = t.bg;
+                root.style.setProperty('--theme-color', `rgb(${t.neon})`);
+
+                // Glow update for markers
+                if (window.applyGlowToAllMarkers) applyGlowToAllMarkers(true);
+
+                console.log('Weather theme applied:', type);
+            }
+
+            // UI Button
+            function createWeatherBtn() {
+                if (document.getElementById('weatherBtn')) return;
+                const btn = document.createElement('button');
+                btn.id = 'weatherBtn';
+                btn.className = 'btn';
+                btn.style.position = 'absolute';
+                btn.style.top = '416px';
+                btn.style.right = '16px';
+                btn.style.zIndex = 2200;
+                btn.innerHTML = '<i class="fas fa-cloud-sun"></i> Weather';
+                btn.onclick = fetchWeatherTheme;
+                document.body.appendChild(btn);
+            }
+
+            createWeatherBtn();
+            fetchWeatherTheme(); // auto apply on load
+        })();
+    </script>
+    <script id="module-11-charging-animation">
+        // --- Module 11: Cinematic Charging Animation System ---
+        // Adds animated charging arcs, glowing rings, and percentage counters.
+        // Pure frontend SVG-based animation, lightweight and GPU-accelerated.
+
+        (function () {
+            function createChargingOverlay() {
+                if (document.getElementById('chargingAnim')) return;
+
+                const div = document.createElement('div');
+                div.id = 'chargingAnim';
+                div.style.position = 'fixed';
+                div.style.inset = '0';
+                div.style.zIndex = '5000';
+                div.style.display = 'none';
+                div.style.justifyContent = 'center';
+                div.style.alignItems = 'center';
+                div.style.backdropFilter = 'blur(6px)';
+                div.style.background = 'rgba(0,0,0,0.4)';
+
+                div.innerHTML = `
+      <div style="text-align:center;color:white;">
+        <svg width="200" height="200" viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="80" stroke="rgba(255,255,255,0.1)" stroke-width="12" fill="none"/>
+          <circle id="chargeArc" cx="100" cy="100" r="80" stroke="var(--theme-color, #00d4ff)" stroke-width="12" fill="none"
+            stroke-linecap="round" stroke-dasharray="502" stroke-dashoffset="502"
+            style="transition: stroke-dashoffset 0.3s ease"/>
+        </svg>
+        <div id="chargePercent" style="font-size:2rem;margin-top:10px;">0%</div>
+      </div>`;
+
+                document.body.appendChild(div);
+            }
+
+            createChargingOverlay();
+
+            // Exposed API
+            window.startChargingAnimation = function (durationMs = 5000) {
+                const overlay = document.getElementById('chargingAnim');
+                const arc = document.getElementById('chargeArc');
+                const txt = document.getElementById('chargePercent');
+
+                overlay.style.display = 'flex';
+                let start = null;
+
+                function step(ts) {
+                    if (!start) start = ts;
+                    const prog = Math.min((ts - start) / durationMs, 1);
+                    const dash = 502 - 502 * prog;
+                    arc.style.strokeDashoffset = dash;
+                    txt.textContent = Math.floor(prog * 100) + '%';
+                    if (prog < 1) requestAnimationFrame(step);
+                    else setTimeout(() => overlay.style.display = 'none', 600);
+                }
+                requestAnimationFrame(step);
+            };
+        })();
+    </script>
+    <script id="module-12-toast-system">
+        // --- Module 12: Advanced Notification & Toast System ---
+        // Lightweight, animated toasts for success, error, info, warning.
+        // Integrates with sounds + haptics if enabled.
+
+        (function () {
+            function createToastContainer() {
+                if (document.getElementById('toastContainer')) return;
+                const div = document.createElement('div');
+                div.id = 'toastContainer';
+                div.style.position = 'fixed';
+                div.style.top = '20px';
+                div.style.right = '20px';
+                div.style.zIndex = '6000';
+                div.style.display = 'flex';
+                div.style.flexDirection = 'column';
+                div.style.gap = '12px';
+                document.body.appendChild(div);
+            }
+
+            function toast(msg, type = 'info') {
+                createToastContainer();
+
+                const colors = {
+                    success: 'rgba(0,200,120,0.9)',
+                    error: 'rgba(255,60,60,0.9)',
+                    warning: 'rgba(255,180,0,0.9)',
+                    info: 'rgba(0,160,255,0.9)'
+                };
+
+                const div = document.createElement('div');
+                div.className = 'toast-item';
+                div.style.padding = '14px 18px';
+                div.style.borderRadius = '12px';
+                div.style.color = 'white';
+                div.style.fontSize = '1rem';
+                div.style.fontWeight = '500';
+                div.style.boxShadow = '0 6px 20px rgba(0,0,0,0.25)';
+                div.style.backdropFilter = 'blur(4px)';
+                div.style.background = colors[type] || colors.info;
+                div.style.transform = 'translateX(150%)';
+                div.style.transition = 'transform 0.4s ease, opacity 0.4s ease';
+                div.style.opacity = '0';
+                div.innerHTML = msg;
+
+                document.getElementById('toastContainer').appendChild(div);
+
+                // Enter animation
+                requestAnimationFrame(() => {
+                    div.style.transform = 'translateX(0)';
+                    div.style.opacity = '1';
+                });
+
+                // Sound + haptics
+                if (window.soundsEnabled) playSound(type === 'error' ? 'error' : 'success');
+                if (window.hapticsEnabled) haptic(type === 'error' ? [80, 40, 80] : [30, 30]);
+
+                // Auto remove
+                setTimeout(() => {
+                    div.style.transform = 'translateX(150%)';
+                    div.style.opacity = '0';
+                    setTimeout(() => div.remove(), 500);
+                }, 3500);
+            }
+
+            // Expose globally
+            window.showToast = toast;
+        })();
+    </script>
+    <script id="module-13-ai-voice-assistant">
+        // --- Module 13: Voice Assistant (Speech Recognition + Conversational AI) ---
+        // Upgraded: Natural conversation, follow-up questions, confirmations, smart search.
+
+        (function () {
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.warn('SpeechRecognition not supported');
+                return;
+            }
+
+            let listening = false;
+            const recog = new SpeechRecognition();
+            recog.continuous = false;
+            recog.interimResults = false;
+            recog.lang = 'en-US';
+
+            // --- Conversational State ---
+            let convoState = { step: null, stationId: null };
+
+            function speak(text) {
+                const synth = window.speechSynthesis;
+                const utter = new SpeechSynthesisUtterance(text);
+                synth.speak(utter);
+            }
+
+            // ---------- Create Voice Button ----------
+            function createVoiceBtn() {
+                if (document.getElementById('voiceBtn')) return;
+                const btn = document.createElement('button');
+                btn.id = 'voiceBtn';
+                btn.className = 'btn';
+                btn.style.position = 'absolute';
+                btn.style.top = '466px';
+                btn.style.right = '16px';
+                btn.style.zIndex = 2200;
+                btn.innerHTML = '<i class="fas fa-microphone"></i> Voice';
+                btn.onclick = toggleVoice;
+                document.body.appendChild(btn);
+            }
+
+            function toggleVoice() {
+                if (!listening) startListening();
+                else stopListening();
+            }
+
+            function startListening() {
+                listening = true;
+                if (window.showToast) showToast('Listening...', 'info');
+                recog.start();
+            }
+
+            function stopListening() {
+                listening = false;
+                if (window.showToast) showToast('Stopped', 'warning');
+                recog.stop();
+            }
+
+            // ---------- Speech Result → AI Conversation ----------
+            recog.onresult = function (e) {
+                const text = e.results[0][0].transcript.toLowerCase();
+                if (window.showToast) showToast("Heard: " + text, "info");
+                handleAIConversation(text);
+            };
+
+
+            // ======================================================================================
+            //                     🔥 ADVANCED AI CONVERSATIONAL ENGINE
+            // ======================================================================================
+            function handleAIConversation(cmd) {
+                cmd = cmd.toLowerCase();
+
+                // --- YES / NO CONFIRMATIONS ---
+                if (convoState.step === "confirm-reserve") {
+                    if (cmd.includes("yes")) {
+                        openReservation(convoState.stationId);
+                        speak("Reservation opened.");
+                        convoState = { step: null };
+                        return;
+                    }
+                    if (cmd.includes("no")) {
+                        speak("Okay, cancelled.");
+                        convoState = { step: null };
+                        return;
+                    }
+                }
+
+                // --- BEST STATION ---
+                if (cmd.includes("best") || cmd.includes("recommend") || cmd.includes("top recommendations")) {
+                    const best = recommendBestStation();
+                    if (best && best[0]) {
+                        const s = best[0].station;
+                        convoState = { step: "confirm-reserve", stationId: s.id };
+                        speak(`The best station right now is ${s.name}. Would you like to reserve it?`);
+                        return;
+                    } else {
+                        speak("I couldn't find any recommended stations at the moment.");
+                        return;
+                    }
+                }
+
+                // --- NAVIGATION TO NEAREST / BEST ---
+                if (cmd.includes("nearest station") || cmd.includes("navigate")) {
+                    const best = recommendBestStation();
+                    if (best && best[0]) {
+                        zoomToStation(best[0].id);
+                        speak("Navigating to the nearest station.");
+                    } else {
+                        speak("No nearby stations found.");
+                    }
+                    return;
+                }
+
+                // --- SEARCH BY LOCATION / KEYWORD ---
+                if (cmd.includes("search") || cmd.includes("find")) {
+                    let q = cmd
+                        .replace("search", "")
+                        .replace("find", "")
+                        .replace("station", "")
+                        .trim();
+
+                    if (!q) {
+                        speak("What location should I search?");
+                        convoState.step = "await-location-query";
+                        return;
+                    }
+
+                    searchStationsByKeyword(q);
+                    speak(`Searching for stations near ${q}.`);
+                    return;
+                }
+
+                if (convoState.step === "await-location-query") {
+                    searchStationsByKeyword(cmd);
+                    speak(`Searching for stations near ${cmd}.`);
+                    convoState.step = null;
+                    return;
+                }
+
+                // --- RESERVATION COMMAND ---
+                if (cmd.includes("reserve")) {
+                    if (window._hudStation) {
+                        convoState = { step: "confirm-reserve", stationId: window._hudStation.id };
+                        speak(`Do you want to reserve a slot at ${window._hudStation.name}?`);
+                    } else {
+                        speak("Please select a station first.");
+                    }
+                    return;
+                }
+
+                // --- THEMES ---
+                if (cmd.includes("dark mode")) {
+                    document.body.dataset.theme = "dark";
+                    speak("Dark mode enabled.");
+                    return;
+                }
+
+                if (cmd.includes("light mode")) {
+                    document.body.dataset.theme = "light";
+                    speak("Light mode enabled.");
+                    return;
+                }
+
+                if (cmd.includes("weather theme")) {
+                    fetchWeatherTheme();
+                    speak("Applying weather theme.");
+                    return;
+                }
+
+                // --- MAP MOVEMENT ---
+                if (cmd.includes("zoom in")) { map.zoomIn(); speak("Zooming in."); return; }
+                if (cmd.includes("zoom out")) { map.zoomOut(); speak("Zooming out."); return; }
+
+                // --- BOOKINGS ---
+                if (cmd.includes("open bookings")) { toggleSidebar(); speak("Opening bookings."); return; }
+                if (cmd.includes("clear bookings")) { clearAllBookings(); speak("Cleared all bookings."); return; }
+
+                // --- SMALL TALK ---
+                if (cmd.includes("hello") || cmd.includes("hi")) {
+                    speak("Hello Vinay! How can I assist you?");
+                    return;
+                }
+
+                if (cmd.includes("who are you")) {
+                    speak("I'm your EV assistant. I help you find and reserve charging stations.");
+                    return;
+                }
+
+                if (cmd.includes("cancel")) {
+                    convoState = { step: null };
+                    speak("Cancelled.");
+                    return;
+                }
+
+                speak("I didn't understand. Could you repeat?");
+            }
+
+
+            // ======================================================================================
+            //                      🔍 STATION KEYWORD SEARCH ENGINE
+            // ======================================================================================
+            window.searchStationsByKeyword = function (keyword) {
+                if (!window.stations) return;
+                const lower = keyword.toLowerCase();
+
+                let found = stations.filter(s =>
+                    s.name.toLowerCase().includes(lower) ||
+                    (s.address && s.address.toLowerCase().includes(lower))
+                );
+
+                if (found.length === 0) {
+                    showToast("No stations found for: " + keyword, "error");
+                    speak("No stations found.");
+                    return;
+                }
+
+                zoomToStation(found[0].id);
+                showToast(`Found station: ${found[0].name}`, "success");
+            };
+
+            createVoiceBtn();
+
+        })();
+    </script>
+
+    <script id="module-14-gesture-control">
+        // --- Module 14: Gesture Control Engine (Swipe, Pinch, Hold) ---
+        // Adds touch gesture detection for mobile: swipe navigation, pinch zoom triggers,
+        // long-press actions. Pure frontend with passive listeners.
+
+        (function () {
+            let startX = 0, startY = 0, endX = 0, endY = 0, startTime = 0;
+            let pinchDistStart = null;
+
+            function onTouchStart(e) {
+                if (e.touches.length === 1) {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    startTime = Date.now();
+                }
+                if (e.touches.length === 2) {
+                    pinchDistStart = pinchDistance(e);
+                }
+            }
+
+            function onTouchMove(e) { }
+
+            function onTouchEnd(e) {
+                endX = e.changedTouches[0]?.clientX || startX;
+                endY = e.changedTouches[0]?.clientY || startY;
+                handleSwipe();
+                pinchDistStart = null;
+            }
+
+            function pinchDistance(e) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            // SWIPE DETECTION
+            function handleSwipe() {
+                const dx = endX - startX;
+                const dy = endY - startY;
+                const dt = Date.now() - startTime;
+
+                if (dt > 500) return; // not a fast swipe
+
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+                    if (dx > 0) onSwipeRight(); else onSwipeLeft();
+                }
+                if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 40) {
+                    if (dy > 0) onSwipeDown(); else onSwipeUp();
+                }
+            }
+
+            // GESTURE ACTIONS
+            function onSwipeLeft() {
+                if (window.showToast) showToast('Swipe Left', 'info');
+            }
+            function onSwipeRight() {
+                if (window.showToast) showToast('Swipe Right', 'info');
+            }
+            function onSwipeUp() {
+                if (window.showToast) showToast('Swipe Up', 'info');
+            }
+            function onSwipeDown() {
+                if (window.showToast) showToast('Swipe Down', 'info');
+            }
+
+            // PINCH
+            document.addEventListener('touchmove', function (e) {
+                if (e.touches.length === 2 && pinchDistStart) {
+                    const dist = pinchDistance(e);
+                    if (dist - pinchDistStart > 30) {
+                        if (window.showToast) showToast('Pinch Out (Zoom In)', 'success');
+                    }
+                    if (pinchDistStart - dist > 30) {
+                        if (window.showToast) showToast('Pinch In (Zoom Out)', 'warning');
+                    }
+                }
+            }, { passive: true });
+
+            // LONG PRESS
+            let longPressTimer = null;
+            document.addEventListener('touchstart', () => {
+                longPressTimer = setTimeout(() => {
+                    if (window.showToast) showToast('Long Press', 'info');
+                }, 700);
+            }, { passive: true });
+
+            document.addEventListener('touchend', () => {
+                clearTimeout(longPressTimer);
+            }, { passive: true });
+
+            // Attach listeners
+            document.addEventListener('touchstart', onTouchStart, { passive: true });
+            document.addEventListener('touchend', onTouchEnd, { passive: true });
+        })();
+    </script>
+
+
+    <script id="module-15-route-optimizer">
+        (function () {
+            let _carMarker = null, _carAnimFrame = null, _routeControls = [], _stations = [];
+
+            // Toast helper
+            function toast(msg, type = "info") {
+                if (window.showToast) return showToast(msg, type);
+                console.log("[RoutePlanner]", type, msg);
+            }
+
+            // Create Route Button
+            function createRouteBtn() {
+                if (document.getElementById("routeBtnFull")) return;
+                const btn = document.createElement("button");
+                btn.id = "routeBtnFull"; btn.className = "btn";
+                btn.style = "position:absolute;top:516px;right:16px;z-index:2200;background:linear-gradient(135deg,#00eaff,#0077ff);padding:12px 18px;border-radius:12px;font-weight:700;color:white";
+                btn.innerHTML = '<i class="fas fa-route" style="margin-right:8px"></i>Route Planner';
+                btn.onclick = ensureRouteUI;
+                document.body.appendChild(btn);
+            }
+
+            // Main UI
+            function ensureRouteUI() {
+                let container = document.getElementById("routePlannerFull");
+                if (container) return container;
+                container = document.createElement("div"); container.id = "routePlannerFull";
+                container.style = "position:fixed;left:50%;top:56%;transform:translate(-50%,-50%);z-index:3500;width:440px;max-height:85vh;overflow-y:auto;background:rgba(4,18,30,0.96);backdrop-filter:blur(12px);border-radius:16px;padding:20px;color:#cfefff;font-family:Inter,sans-serif;box-shadow:0 8px 32px rgba(0,0,0,0.6)";
+                container.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <strong style="font-size:1.15rem;color:#9ef">Advanced Route Planner</strong>
+            <button id="routeCloseFull" style="background:none;border:none;color:#9ef;font-size:1.4rem;cursor:pointer">✕</button>
+        </div>
+        <label style="font-size:0.85rem;opacity:0.9">From</label>
+        <input id="routeOrigin" placeholder="Map center, pick on map, or lat,lng" style="width:100%;padding:12px;border-radius:10px;border:none;background:#052233;color:#dff;margin-bottom:10px;font-size:0.95rem">
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+            <button id="setOriginMap" class="btn" style="flex:1;padding:10px">Use Map Center</button>
+            <button id="pickOriginBtn" class="btn" style="flex:1;padding:10px">Pick on Map</button>
+        </div>
+        <label style="font-size:0.85rem;opacity:0.9">To</label>
+        <input id="routeDestFull" placeholder="Place name or lat,lng" style="width:100%;padding:12px;border-radius:10px;border:none;background:#052233;color:#dff;margin-bottom:10px;font-size:0.95rem">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+            <select id="routeProfile" style="flex:1;padding:12px;border-radius:10px;background:#032233;color:#dff;font-size:0.95rem">
+                <option value="driving">Driving</option>
+                <option value="cycling">Cycling</option>
+                <option value="walking">Walking</option>
+            </select>
+        </div>
+        <button id="searchRouteFull" class="btn" style="width:100%;padding:14px;background:#0099ff;font-weight:700;font-size:1rem;margin-bottom:14px">Find Routes</button>
+        <div id="routeStatus" style="font-size:0.95rem;opacity:0.9;min-height:24px">Enter destination and click Find Routes</div>
+        <div id="routeResults" style="margin-top:12px"></div>
+        <div style="display:flex;gap:10px;margin-top:16px">
+            <button id="clearRouteBtn" class="btn" style="flex:1;padding:12px;background:#ff4444;font-weight:600">Clear All</button>
+            <button id="closeRouteBtn" class="btn" style="flex:1;padding:12px;background:#555;font-weight:600">Close</button>
+        </div>
+    `;
+                document.body.appendChild(container);
+                container.querySelector("#routeCloseFull").onclick = () => container.remove();
+                container.querySelector("#closeRouteBtn").onclick = () => container.remove();
+                container.querySelector("#clearRouteBtn").onclick = clearAllRoutes;
+                container.querySelector("#setOriginMap").onclick = setOriginFromMapCenter;
+                container.querySelector("#pickOriginBtn").onclick = enableMapPickOrigin;
+                container.querySelector("#searchRouteFull").onclick = () => startRoutingFlow(container);
+                return container;
+            }
+
+            // Map pick origin
+            let _pickOriginActive = false;
+            function enableMapPickOrigin() {
+                if (_pickOriginActive) return;
+                toast("Click on map to set origin", "info"); _pickOriginActive = true;
+                const handler = e => {
+                    document.getElementById("routeOrigin").value = `${e.latlng.lat.toFixed(6)},${e.latlng.lng.toFixed(6)}`;
+                    toast("Origin set from map click", "success"); _pickOriginActive = false;
+                    map.off("click", handler);
+                };
+                map.on("click", handler);
+            }
+            function setOriginFromMapCenter() {
+                const c = map.getCenter();
+                document.getElementById("routeOrigin").value = `${c.lat.toFixed(6)},${c.lng.toFixed(6)}`;
+                toast("Origin set to map center", "info");
+            }
+
+            // Geocode using Nominatim
+            async function geocodePlace(q) {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
+                const j = await res.json();
+                if (!j || j.length === 0) throw new Error("Location not found");
+                return { lat: parseFloat(j[0].lat), lng: parseFloat(j[0].lon), name: j[0].display_name };
+            }
+
+            // Routing
+            async function startRoutingFlow(container) {
+                const statusEl = container.querySelector("#routeStatus"); statusEl.textContent = "Processing...";
+                try {
+                    const originInput = container.querySelector("#routeOrigin").value.trim();
+                    const destInput = container.querySelector("#routeDestFull").value.trim();
+                    if (!destInput) { statusEl.textContent = "Destination required"; return toast("Destination required", "warning"); }
+                    const latlngRegex = /^[+-]?\d+(\.\d+)?\s*,\s*[+-]?\d+(\.\d+)?$/;
+                    let origin, destination;
+                    if (originInput.match(latlngRegex)) {
+                        const [lat, lng] = originInput.split(",").map(v => parseFloat(v.trim())); origin = { lat, lng };
+                    } else if (originInput) { origin = await geocodePlace(originInput); toast(`Origin found: ${origin.name.substring(0, 50)}...`, "info"); }
+                    else { const c = map.getCenter(); origin = { lat: c.lat, lng: c.lng }; toast("Using map center as origin", "info"); }
+                    if (destInput.match(latlngRegex)) { const [lat, lng] = destInput.split(",").map(v => parseFloat(v.trim())); destination = { lat, lng }; }
+                    else { destination = await geocodePlace(destInput); toast(`Destination found: ${destination.name.substring(0, 50)}...`, "info"); }
+                    statusEl.textContent = "Fetching routes...";
+                    clearAllRoutes();
+
+                    // Up to 3 alternative routes using OSRM
+                    for (let i = 0; i < 3; i++) {
+                        const control = L.Routing.control({
+                            waypoints: [L.latLng(origin.lat, origin.lng), L.latLng(destination.lat, destination.lng)],
+                            router: L.Routing.osrmv1({ serviceUrl: "https://router.project-osrm.org/route/v1" }),
+                            lineOptions: { styles: [{ color: i === 0 ? "#00d4ff" : "#00ffaa", weight: i === 0 ? 8 : 6 }] },
+                            addWaypoints: false,
+                            draggableWaypoints: false,
+                            fitSelectedRoutes: false,
+                            show: false
+                        }).addTo(map);
+                        _routeControls.push(control);
+                        control.on("routesfound", e => renderRouteCard(e.routes[0], i));
+                    }
+                    statusEl.textContent = "Routes ready!";
+                } catch (err) { console.error(err); statusEl.textContent = "Error"; toast("Error: " + err.message, "error"); }
+            }
+
+            // Render route card
+            function renderRouteCard(route, idx) {
+                const container = document.getElementById("routeResults");
+                const km = (route.summary.totalDistance / 1000).toFixed(1);
+                const mins = Math.round(route.summary.totalTime / 60);
+                const card = document.createElement("div");
+                card.style.background = idx === 0 ? "rgba(0,100,180,0.5)" : "rgba(0,60,100,0.4)";
+                card.style.padding = "14px"; card.style.marginBottom = "12px"; card.style.borderRadius = "12px";
+                if (idx === 0) card.style.border = "1px solid #00d4ff";
+                card.innerHTML = `
+        <div style="font-weight:600;margin-bottom:8px">Route ${idx + 1} ${idx === 0 ? "(Fastest)" : "(Alternative)"} — ${km} km • ${mins} min</div>
+        <div style="display:flex;gap:8px">
+            <button class="btn show-btn" data-idx="${idx}" style="flex:1;padding:10px">Show & Steps</button>
+            <button class="btn preview-btn" data-idx="${idx}" style="flex:1;padding:10px;background:#00cc99">Preview</button>
+            <button class="btn anim-btn" data-idx="${idx}" style="flex:1;padding:10px;background:#ffdd00;color:#000;font-weight:700">Animate Car</button>
+        </div>
+        <div id="steps-${idx}" style="margin-top:12px;font-size:0.9rem;line-height:1.4;max-height:200px;overflow-y:auto;display:none"></div>
+    `;
+                container.appendChild(card);
+
+                // Buttons
+                card.querySelector(".show-btn").onclick = () => { showRouteOnMap(route, idx, card); };
+                card.querySelector(".preview-btn").onclick = () => previewRoute(route);
+                card.querySelector(".anim-btn").onclick = () => { showRouteOnMap(route, idx, card); animateCarAlongRoute(route.coordinates || route.waypoints.map(w => ({ lat: w.latLng.lat, lng: w.latLng.lng }))); };
+            }
+
+            // Show route on map
+            function showRouteOnMap(route, idx, card) {
+                _routeControls.forEach(c => map.removeControl(c)); _routeControls = [];
+                const stepsDiv = card.querySelector(`#steps-${idx}`);
+                stepsDiv.style.display = stepsDiv.style.display === "block" ? "none" : "block";
+                if (stepsDiv.style.display === "block" && stepsDiv.innerHTML === "") {
+                    if (route.instructions) {
+                        stepsDiv.innerHTML = route.instructions.map((s, i) => `<div><strong>${i + 1}.</strong> ${s.text} (<em>${Math.round(s.distance)} m</em>)</div>`).join("");
+                    }
+                }
+                const coords = (route.coordinates || route.waypoints.map(w => w.latLng));
+                const control = L.Routing.control({ waypoints: coords.map(c => L.latLng(c.lat || c.latLng.lat, c.lng || c.latLng.lng)), createMarker: () => null, lineOptions: { styles: [{ color: "#00d4ff", weight: 8 }] }, show: false }).addTo(map);
+                _routeControls.push(control);
+            }
+
+            // Preview route
+            function previewRoute(route) {
+                let coords = (route.coordinates || route.waypoints.map(w => ({ lat: w.latLng.lat, lng: w.latLng.lng })));
+                if (coords.length < 2) return toast("Cannot preview this route", "error");
+                const line = L.polyline(coords.map(c => [c.lat, c.lng]), { color: "#00ffaa", weight: 6, dashArray: "12,12", opacity: 0.8 }).addTo(map);
+                const mid = Math.floor(coords.length / 2);
+                map.flyTo([coords[mid].lat, coords[mid].lng], 13, { duration: 1.5 });
+                setTimeout(() => map.removeLayer(line), 5000);
+            }
+
+            // Animate car
+            function animateCarAlongRoute(coords) {
+                if (!coords || coords.length < 2) return toast("No valid route", "error");
+                if (_carMarker) map.removeLayer(_carMarker);
+                _carMarker = L.marker([coords[0].lat, coords[0].lng], { icon: L.divIcon({ className: "car-marker", html: `<img src="https://cdn-icons-png.flaticon.com/512/743/743922.png" style="width:40px;height:40px;">`, iconSize: [40, 40], iconAnchor: [20, 20] }) }).addTo(map);
+                let index = 0;
+                function step() {
+                    if (index >= coords.length - 1) { toast("Destination reached!", "success"); return; }
+                    const current = coords[index], next = coords[index + 1];
+                    const lat = current.lat + (next.lat - current.lat) * 0.05;
+                    const lng = current.lng + (next.lng - current.lng) * 0.05;
+                    _carMarker.setLatLng([lat, lng]);
+                    if (Math.abs(lat - next.lat) < 0.0001 && Math.abs(lng - next.lng) < 0.0001) index++;
+                    _carAnimFrame = requestAnimationFrame(step);
+                }
+                step();
+            }
+
+            // Clear all routes
+            function clearAllRoutes() {
+                _routeControls.forEach(c => map.removeControl(c)); _routeControls = [];
+                if (_carMarker) map.removeLayer(_carMarker); _carMarker = null;
+                if (_carAnimFrame) cancelAnimationFrame(_carAnimFrame); _carAnimFrame = null;
+                const container = document.getElementById("routeResults"); if (container) container.innerHTML = "";
+                toast("Routes cleared", "info");
+            }
+
+            // Initialize
+            if (typeof map !== "undefined" && map) { createRouteBtn(); toast("Advanced Route Planner ready", "success"); }
+            else { const initInterval = setInterval(() => { if (typeof map !== "undefined" && map) { clearInterval(initInterval); createRouteBtn(); } }, 1000); }
+
+        })();
+    </script>
+
+
+
+
+
+    <script id="module-16-achievement-system">
+        // --- Module 16: Gamified Achievement & Rewards System ---
+        // Tracks user actions (reservations, distance, streaks) and shows achievement popups.
+
+        (function () {
+            const ACH_STORE = 'ev_achievements';
+            let ach = JSON.parse(localStorage.getItem(ACH_STORE) || '{}');
+
+            const ACH_LIST = {
+                firstReserve: { name: 'First Reservation', desc: 'You reserved your first charger!', icon: '🟢' },
+                fiveReserves: { name: 'Power User', desc: '5 reservations completed!', icon: '⚡' },
+                explorer: { name: 'Explorer', desc: 'Visited 3 unique stations', icon: '🗺️' },
+                streak3: { name: '3-Day Streak', desc: 'Used the app 3 days in a row', icon: '🔥' }
+            };
+
+            function save() { localStorage.setItem(ACH_STORE, JSON.stringify(ach)); }
+
+            function unlock(id) {
+                if (ach[id]) return;
+                ach[id] = true;
+                save();
+                showAchievement(id);
+            }
+
+            function showAchievement(id) {
+                const a = ACH_LIST[id];
+                if (!a) return;
+                if (window.showToast) showToast(`${a.icon} <b>${a.name}</b>: ${a.desc}`, 'success');
+                if (window.soundsEnabled) playSound('success');
+                if (window.hapticsEnabled) haptic([40, 40]);
+            }
+
+            // Hook into reservation
+            const origReserve = window.confirmReservation;
+            if (typeof origReserve === 'function') {
+                window.confirmReservation = function (...args) {
+                    const r = origReserve.apply(this, args);
+                    unlock('firstReserve');
+                    ach._resCount = (ach._resCount || 0) + 1;
+                    if (ach._resCount >= 5) unlock('fiveReserves');
+                    save();
+                    return r;
+                };
+            }
+
+            // Unique stations visited
+            window.markStationVisited = function (id) {
+                ach._visited = ach._visited || {};
+                ach._visited[id] = true;
+                if (Object.keys(ach._visited).length >= 3) unlock('explorer');
+                save();
+            };
+
+            // Daily streak
+            (function streak() {
+                const today = new Date().toDateString();
+                const last = ach._lastDay;
+                if (last !== today) {
+                    ach._lastDay = today;
+                    ach._streak = (last ? (new Date(last).getTime() + 86400000 === new Date(today).getTime() ? (ach._streak || 1) + 1 : 1) : 1);
+                    if (ach._streak >= 3) unlock('streak3');
+                    save();
+                }
+            })();
+
+        })();
+    </script>
+    <script id="module-17-offline-cache">
+        // --- Module 17: Offline Cache & Fallback Layer (PWA-lite, frontend only) ---
+        // Detects offline mode, provides fallback data, and displays offline banner.
+
+        (function () {
+            // Offline banner
+            function createOfflineBanner() {
+                if (document.getElementById('offlineBanner')) return;
+                const div = document.createElement('div');
+                div.id = 'offlineBanner';
+                div.style.position = 'fixed';
+                div.style.top = '0';
+                div.style.left = '0';
+                div.style.right = '0';
+                div.style.padding = '10px 16px';
+                div.style.textAlign = 'center';
+                div.style.background = 'rgba(255,80,80,0.95)';
+                div.style.color = 'white';
+                div.style.fontWeight = '600';
+                div.style.zIndex = '7000';
+                div.style.display = 'none';
+                div.textContent = 'You are offline — showing cached data';
+                document.body.appendChild(div);
+            }
+            createOfflineBanner();
+
+            const CACHE_KEY = 'ev_cache_stations';
+
+            // Cache stations when online
+            function cacheStations() {
+                if (!window.stations) return;
+                localStorage.setItem(CACHE_KEY, JSON.stringify(window.stations));
+            }
+
+            // Load cached stations when offline
+            function loadCachedStations() {
+                const d = localStorage.getItem(CACHE_KEY);
+                if (!d) return null;
+                try { return JSON.parse(d); } catch { o: return null; }
+            }
+
+            function updateBanner() {
+                const b = document.getElementById('offlineBanner');
+                if (!navigator.onLine) {
+                    b.style.display = 'block';
+                    if (window.showToast) showToast('Offline mode enabled', 'warning');
+                } else {
+                    b.style.display = 'none';
+                    if (window.showToast) showToast('Back online', 'success');
+                }
+            }
+
+            window.addEventListener('online', () => {
+                updateBanner();
+                cacheStations();
+            });
+
+            window.addEventListener('offline', () => {
+                updateBanner();
+                const cached = loadCachedStations();
+                if (cached) {
+                    window.stations = cached;
+                    if (window.renderMarkers) renderMarkers();
+                }
+            });
+
+            // Initial check
+            updateBanner();
+        })();
+    </script>
+    <script id="module-19-energy-analytics">
+        // --- Module 19: Energy Analytics (Fixed & Working 100%) ---
+        (function () {
+            const KEY = 'ev_energy_stats_session';  // session-only
+            let stats = JSON.parse(sessionStorage.getItem(KEY) || '{"sessions":[]}');
+
+            function save() {
+                sessionStorage.setItem(KEY, JSON.stringify(stats));
+            }
+
+            // Create floating Energy button
+            function createEnergyBtn() {
+                if (document.getElementById('energyBtn')) return;
+                const btn = document.createElement('button');
+                btn.id = 'energyBtn';
+                btn.className = 'btn btn-primary';
+                btn.style.position = 'absolute';
+                btn.style.top = '564px';
+                btn.style.right = '16px';
+                btn.style.zIndex = '2200';
+                btn.style.padding = '12px 16px';
+                btn.innerHTML = '<i class="fas fa-chart-line"></i> Energy';
+                btn.onclick = openDashboard;
+                document.body.appendChild(btn);
+            }
+
+            // Log real session when charging completes
+            function logCompletedSession() {
+                if (!window.currentBooking || !window.currentStation) return;
+
+                const kWh = parseFloat(window.currentBooking.kwh || 0);
+                if (kWh <= 0) return;
+
+                const cost = (kWh * 18).toFixed(2); // ₹18/kWh realistic rate
+
+                stats.sessions.push({
+                    time: new Date().toLocaleString('en-IN'),
+                    station: window.currentStation.name,
+                    vehicle: window.currentBooking.vehicle,
+                    kWh: kWh,
+                    cost: Number(cost),
+                    plan: window.currentBooking.plan
+                });
+
+                save();
+                if (window.showToast) showToast(`Logged ${kWh.toFixed(1)} kWh session`, 'success');
+            }
+
+            // Hook into completeSimulation — this is where real kWh exists!
+            const originalCompleteSimulation = window.completeSimulation;
+            window.completeSimulation = function () {
+                // Let original run first (it sets currentBooking.kwh)
+                const result = originalCompleteSimulation.apply(this, arguments);
+
+                // Now log the real session
+                setTimeout(logCompletedSession, 100); // tiny delay to ensure kWh is set
+
+                return result;
+            };
+
+            function openDashboard() {
+                const totalKWh = stats.sessions.reduce((a, s) => a + s.kWh, 0).toFixed(2);
+                const totalCost = stats.sessions.reduce((a, s) => a + s.cost, 0).toFixed(2);
+
+                const overlay = document.createElement('div');
+                overlay.style.cssText = `
+                position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(12px);
+                z-index:9999;display:flex;align-items:center;justify-content:center;
+            `;
+                overlay.onclick = () => overlay.remove();
+
+                const box = document.createElement('div');
+                box.style.cssText = `
+                background:var(--card);color:var(--text);padding:24px;border-radius:20px;
+                max-width:90%;width:380px;box-shadow:0 20px 60px rgba(0,212,255,0.3);
+                border:1px solid rgba(0,212,255,0.2);
+            `;
+
+                const sessionList = stats.sessions.length ?
+                    stats.sessions.map(s => `
+                    <div style="padding:10px;background:rgba(0,212,255,0.05);border-radius:10px;margin:8px 0;">
+                        <div><strong>${s.station}</strong></div>
+                        <div style="font-size:0.9rem;opacity:0.8;">
+                            ${s.vehicle} • ${s.plan} • ${s.time}
+                        </div>
+                        <div style="margin-top:6px;font-weight:700;color:var(--primary);">
+                            ${s.kWh.toFixed(1)} kWh → ₹${s.cost}
+                        </div>
+                    </div>
+                `).join('') :
+                    '<p style="text-align:center;color:#888;margin:40px 0;">No charging sessions yet</p>';
+
+                box.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <h2 style="font-size:1.4rem;font-weight:800;background:linear-gradient(90deg,#00d4ff,#00ff88);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">
+                        Energy Analytics
+                    </h2>
+                    <button style="background:none;border:none;font-size:1.8rem;cursor:pointer;opacity:0.6;" onclick="this.closest('[style*=\'z-index:9999\']').remove()">×</button>
+                </div>
+                <div style="background:linear-gradient(135deg,rgba(0,212,255,0.1),rgba(0,255,136,0.1));padding:16px;border-radius:14px;margin-bottom:16px;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:center;">
+                        <div>
+                            <div style="font-size:2rem;font-weight:900;color:#00ff88;">${totalKWh}</div>
+                            <div style="opacity:0.7;font-size:0.9rem;">Total kWh</div>
+                        </div>
+                        <div>
+                            <div style="font-size:2rem;font-weight:900;color:#00d4ff;">₹${totalCost}</div>
+                            <div style="opacity:0.7;font-size:0.9rem;">Total Spent</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px;text-align:center;font-size:0.95rem;">
+                        Sessions: <strong>${stats.sessions.length}</strong>
+                    </div>
+                </div>
+                <div style="max-height:50vh;overflow-y:auto;">
+                    ${sessionList}
+                </div>
+                <div style="margin-top:16px;text-align:center;font-size:0.8rem;opacity:0.6;">
+                    Data clears when you close this tab
+                </div>
+            `;
+
+                overlay.appendChild(box);
+                document.body.appendChild(overlay);
+            }
+
+            // Initialize
+            createEnergyBtn();
+
+            // Auto-log if page reloads mid-session (rare edge case)
+            if (window.currentBooking && window.currentBooking.kwh) {
+                setTimeout(logCompletedSession, 1000);
+            }
+
+        })();
+    </script>
+    <script id="module-20-station-health-engine">
+        (function () {
+
+            // ------------------------------------------------------------
+            // DEVICE BATTERY ENGINE
+            // ------------------------------------------------------------
+            async function initDeviceBatteryMonitor() {
+                if (!('getBattery' in navigator)) {
+                    console.warn("Battery API not supported");
+                    return;
+                }
+
+                const battery = await navigator.getBattery();
+                window.deviceBattery = battery;
+
+                function computeHealthLevel() {
+                    // Simulated battery health
+                    const pct = battery.level * 100;
+
+                    if (pct >= 85) return "Excellent";
+                    if (pct >= 60) return "Average";
+                    if (pct >= 35) return "Low";
+                    return "Critical";
+                }
+
+                function displayBatteryStatus() {
+                    const pct = (battery.level * 100).toFixed(0);
+                    const charging = battery.charging;
+                    const status = computeHealthLevel();
+
+                    if (window.showToast) {
+                        showToast(
+                            `🔋 Device Battery: ${pct}% — ${status}${charging ? " (Charging)" : ""}`,
+                            status === "Excellent" ? "success" :
+                                status === "Average" ? "info" :
+                                    status === "Low" ? "warning" : "error"
+                        );
+                    }
+                }
+
+                // Initial display
+                displayBatteryStatus();
+
+                // Event listeners
+                battery.addEventListener("levelchange", displayBatteryStatus);
+                battery.addEventListener("chargingchange", displayBatteryStatus);
+
+                // ✅ Poll every 30 seconds
+                setInterval(displayBatteryStatus, 30000);
+            }
+
+            initDeviceBatteryMonitor();
+
+            // ------------------------------------------------------------
+            // STATION HEALTH SYSTEM
+            // ------------------------------------------------------------
+            function initHealth() {
+                if (!window.stations) return;
+                window.stations.forEach(s => {
+                    if (typeof s.health === 'undefined') {
+                        s.health = 80 + Math.random() * 20; // 80–100
+                    }
+                });
+            }
+
+            function applyAging() {
+                if (!window.stations) return;
+
+                window.stations.forEach(s => {
+                    const drop = Math.random() * 0.4;
+                    s.health = Math.max(0, s.health - drop);
+
+                    if (s.health < 35 && Math.random() < 0.01) {
+                        s.status = 'fault';
+                    }
+                });
+
+                if (window.renderMarkers) renderMarkers();
+            }
+
+            const oldRender = window.renderMarkers;
+            if (typeof oldRender === 'function') {
+                window.renderMarkers = function (...args) {
+                    oldRender.apply(this, args);
+                    highlightCriticalStations();
+                };
+            }
+
+            function highlightCriticalStations() {
+                window.stations.forEach(s => {
+                    if (s.health < 40 && window.showToast) {
+                        showToast(
+                            `⚠️ ${s.name} health critical (${s.health.toFixed(0)}%)`,
+                            'warning'
+                        );
+                    }
+
+                    if (s.status === 'fault' && window.showToast) {
+                        showToast(`❌ ${s.name} is in FAULT state`, 'error');
+                    }
+                });
+            }
+
+            window.getHealthColor = function (h) {
+                if (h >= 80) return '#32ff7e';
+                if (h >= 60) return '#f7f75c';
+                if (h >= 40) return '#ffa53b';
+                return '#ff4d4d';
+            };
+
+            initHealth();
+
+            // ✅ Aging applied every 30 seconds
+            setInterval(applyAging, 30000);
+
+        })();
+    </script>
+
+
+
+    <!-- ============================================================
+     MODULE: Advanced EV Features (Inline)
+     Includes:
+     - Spot Hold Timer
+     - Vehicle Profiles
+     - Dynamic Pricing Alerts
+     - Usage Heatmap Engine
+=============================================================== -->
+    <script id="module-advanced-ev-features">
+
+        (function () {
+
+            // ============================================================================
+            // 1. Spot Hold Timer
+            // ============================================================================
+
+            window.SpotHoldTimer = (function () {
+
+                let timers = {}; // stationId -> timeout reference
+
+                function startHold(stationId, minutes = 10) {
+                    clearHold(stationId);
+                    const ms = minutes * 60 * 1000;
+
+                    timers[stationId] = setTimeout(() => {
+                        showToast(`Hold expired for station ${stationId}`, "warning");
+                        releaseHold(stationId);
+                    }, ms);
+
+                    showToast(`Holding spot for ${minutes} minutes`, "success");
+                }
+
+                function clearHold(stationId) {
+                    if (timers[stationId]) {
+                        clearTimeout(timers[stationId]);
+                        delete timers[stationId];
+                    }
+                }
+
+                function releaseHold(stationId) {
+                    clearHold(stationId);
+                    console.log(`Spot released for station ${stationId}`);
+                }
+
+                return { startHold, clearHold, releaseHold };
+
+            })();
+
+
+            // ============================================================================
+            // 2. Vehicle Profiles (save EV model, battery, connector)
+            // ============================================================================
+
+            window.VehicleProfiles = (function () {
+
+                const KEY = "ev_vehicle_profile";
+
+                function saveProfile(profile) {
+                    localStorage.setItem(KEY, JSON.stringify(profile));
+                    showToast("Vehicle profile saved!", "success");
+                }
+
+                function loadProfile() {
+                    return JSON.parse(localStorage.getItem(KEY) || "{}");
+                }
+
+                // Filtering logic (used later by your station loader)
+                function filterStations(stations) {
+                    const profile = loadProfile();
+                    if (!profile.connector) return stations;
+
+                    return stations.filter(s =>
+                        s.connectors && s.connectors.includes(profile.connector)
+                    );
+                }
+
+                return { saveProfile, loadProfile, filterStations };
+
+            })();
+
+
+            // ============================================================================
+            // 3. Dynamic Pricing Alerts (push when price drops)
+            // ============================================================================
+
+            window.DynamicPricingAlerts = (function () {
+
+                let lastPrices = {}; // stationId -> previous price
+
+                function checkPrices(stations) {
+                    stations.forEach(s => {
+                        if (!lastPrices[s.id]) {
+                            lastPrices[s.id] = s.price;
+                            return;
+                        }
+
+                        if (s.price < lastPrices[s.id]) {
+                            sendNotification(`${s.name} price dropped to ₹${s.price}`);
+                        }
+
+                        lastPrices[s.id] = s.price;
+                    });
+                }
+
+                function sendNotification(message) {
+                    if ("Notification" in window) {
+                        if (Notification.permission === "granted") {
+                            new Notification(message);
+                        } else {
+                            Notification.requestPermission();
+                        }
+                    } else {
+                        console.log("Notification:", message);
+                    }
+
+                    // fallback UI toast
+                    if (window.showToast) showToast(message, "success");
+                }
+
+                return { checkPrices };
+
+            })();
+
+
+            // ============================================================================
+            // 4. Heatmap Usage Analyzer (aggregated usage trends)
+            // ============================================================================
+
+            window.HeatmapUsage = (function () {
+
+                let usageHistory = {}; // stationId -> array of usage values
+
+                function recordUsage(stationId, usage) {
+                    if (!usageHistory[stationId]) usageHistory[stationId] = [];
+                    usageHistory[stationId].push({ time: Date.now(), value: usage });
+                }
+
+                function generateHeatmap() {
+                    const heatmap = {};
+
+                    for (let id in usageHistory) {
+                        const values = usageHistory[id].map(v => v.value);
+                        if (!values.length) continue;
+
+                        const avg = values.reduce((a, b) => a + b, 0) / values.length;
+                        heatmap[id] = avg; // 0–1 usage heat
+                    }
+
+                    return heatmap;
+                }
+
+                return { recordUsage, generateHeatmap };
+
+            })();
+
+
+            // ============================================================================
+            // 5. Integration Hooks (These DO NOT run automatically)
+            //    You can call these when the correct data is available.
+            // ============================================================================
+
+            // Call this inside your reservation popup “Confirm” button
+            window.__integrateHoldTimerOnReservation = function (stationId) {
+                SpotHoldTimer.startHold(stationId, 10);
+            };
+
+            // Call this inside your station fetch function
+            window.__applyVehicleProfileFilter = function (stations) {
+                return VehicleProfiles.filterStations(stations);
+            };
+
+            // Call this inside your pricing update function
+            window.__checkDynamicPricing = function (stations) {
+                DynamicPricingAlerts.checkPrices(stations);
+            };
+
+            // Call this when updating station marker occupancy
+            window.__recordUsageHeatmap = function (stationId, occupancy) {
+                HeatmapUsage.recordUsage(stationId, occupancy);
+            };
+
+        })(); // END wrapper
+
+    </script>
+
+
+<script src="chargepe-sync.js"></script>
+<script src="chargepe-realtime-sync.js"></script>
+
+</body>
+</body>
+
+</html>

@@ -1,0 +1,583 @@
+/* responsive.css - Media Queries for ChargePe App Responsiveness */
+
+/* Extra small devices (phones, 480px and down) */
+@media only screen and (max-width: 480px) {
+    :root {
+        --header-height: 70px;
+    }
+
+    header {
+        flex-direction: column;
+        gap: 6px;
+        padding: 1rem;
+    }
+
+    .logo {
+        font-size: 1.5rem;
+    }
+
+    .tagline {
+        font-size: 0.75rem;
+    }
+
+    .controls {
+        top: calc(var(--header-height) + 10px);
+        left: 50%;
+        transform: translateX(-50%);
+        flex-direction: row;
+        width: 95%;
+        gap: 8px;
+    }
+
+    .btn {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+        gap: 8px;
+    }
+
+    .filter-bar {
+        top: calc(var(--header-height) + 70px);
+        width: 90%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 8px;
+        gap: 6px;
+    }
+
+    .filter-btn {
+        padding: 6px 10px;
+        font-size: 0.85rem;
+    }
+
+    .search-box {
+        top: calc(var(--header-height) + 120px);
+        width: 95%;
+    }
+
+    .search-box input {
+        padding: 12px 16px;
+        font-size: 0.95rem;
+    }
+
+    .sidebar {
+        width: 100%;
+        right: -100%;
+        padding: 18px;
+    }
+
+    .modal-content {
+        width: 95%;
+        max-width: none;
+    }
+
+    .toast {
+        padding: 12px 20px;
+        font-size: 0.9rem;
+        bottom: 50px;
+    }
+
+    footer {
+        font-size: 0.65rem;
+        bottom: 8px;
+        left: 12px;
+    }
+
+    #map {
+        height: calc(100dvh - var(--header-height));
+    }
+}
+
+/* Small devices (tablets, 481px to 768px) - Extending existing query */
+@media only screen and (min-width: 481px) and (max-width: 768px) {
+    /* Existing styles from HTML can be assumed or overridden if needed */
+    .controls {
+        flex-direction: row;
+        justify-content: space-around;
+    }
+
+    .search-box {
+        width: 80%;
+    }
+
+    .filter-bar {
+        width: 80%;
+    }
+
+    .modal-content {
+        width: 85%;
+    }
+}
+
+/* Medium devices (small laptops, 769px to 1024px) */
+@media only screen and (min-width: 769px) and (max-width: 1024px) {
+    :root {
+        --header-height: 80px;
+    }
+
+    header {
+        padding: 1.1rem;
+    }
+
+    .logo {
+        font-size: 1.7rem;
+    }
+
+    .controls {
+        gap: 10px;
+        left: 14px;
+    }
+
+    .filter-bar {
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .search-box {
+        width: 300px;
+    }
+
+    .sidebar {
+        width: 380px;
+        right: -380px;
+        padding: 20px;
+    }
+
+    .modal-content {
+        width: 80%;
+        max-width: 680px;
+    }
+
+    .toast {
+        padding: 12px 24px;
+    }
+
+    footer {
+        font-size: 0.7rem;
+        left: 14px;
+    }
+}
+
+/* Large devices (laptops/desktops, 1025px to 1440px) */
+@media only screen and (min-width: 1025px) and (max-width: 1440px) {
+    .controls {
+        left: 20px;
+        gap: 14px;
+    }
+
+    .search-box {
+        width: 380px;
+    }
+
+    .sidebar {
+        width: 460px;
+        right: -460px;
+        padding: 28px;
+    }
+
+    .modal-content {
+        max-width: 800px;
+    }
+}
+
+/* Extra large devices (large desktops, 1441px and up) */
+@media only screen and (min-width: 1441px) {
+    header {
+        padding: 1.4rem;
+    }
+
+    .logo {
+        font-size: 2rem;
+    }
+
+    .controls {
+        left: 24px;
+        gap: 16px;
+    }
+
+    .btn {
+        padding: 14px 18px;
+    }
+
+    .filter-bar {
+        padding: 14px;
+        gap: 12px;
+    }
+
+    .search-box {
+        width: 420px;
+    }
+
+    .sidebar {
+        width: 500px;
+        right: -500px;
+        padding: 30px;
+    }
+
+    .modal-content {
+        max-width: 900px;
+    }
+
+    .toast {
+        padding: 16px 32px;
+        font-size: 1.1rem;
+    }
+
+    footer {
+        font-size: 0.8rem;
+        left: 20px;
+    }
+}
+
+/* Landscape orientation (for mobile devices) */
+@media only screen and (orientation: landscape) and (max-width: 768px) {
+    :root {
+        --header-height: 60px;
+    }
+
+    .controls {
+        flex-direction: row;
+        width: 80%;
+    }
+
+    .search-box {
+        top: calc(var(--header-height) + 10px);
+        width: 60%;
+    }
+
+    #map {
+        height: calc(100dvh - var(--header-height));
+    }
+}
+
+/* Print styles (for invoices or maps) */
+@media print {
+    body {
+        background: white;
+        color: black;
+    }
+
+    header, .controls, .filter-bar, .search-box, .sidebar, .modal, .toast, footer, #arOverlay {
+        display: none;
+    }
+
+    #map {
+        height: 100%;
+        top: 0;
+    }
+
+    .modal-content {
+        background: white;
+        color: black;
+        box-shadow: none;
+    }
+}
+
+/* =========================================================
+   🧠 RESPONSIVE SYSTEM — HIGH END
+   Optimized for EV map dashboards, AR, glass UI
+   ========================================================= */
+
+
+/* -----------------------------
+   📱 EXTRA SMALL PHONES (≤360px)
+------------------------------ */
+@media (max-width: 360px) {
+  :root {
+    --header-height: 70px;
+  }
+
+  header {
+    padding: 0.8rem;
+  }
+
+  .logo {
+    font-size: 1.4rem;
+  }
+
+  .controls {
+    gap: 6px;
+  }
+
+  .btn {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+
+  .search-box input {
+    font-size: 0.9rem;
+    padding: 12px 16px;
+  }
+
+  .filter-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+
+/* -----------------------------
+   📱 PHONES (≤480px)
+------------------------------ */
+@media (max-width: 480px) {
+  header {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .controls {
+    top: calc(var(--header-height) + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: row;
+    width: 96%;
+  }
+
+  .filter-bar {
+    top: calc(var(--header-height) + 64px);
+    width: 95%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .search-box {
+    width: 94%;
+    top: calc(var(--header-height) + 110px);
+  }
+
+  .sidebar {
+    width: 100%;
+  }
+
+  .modal-content {
+    width: 96%;
+  }
+}
+
+
+/* -----------------------------
+   📲 LARGE PHONES / SMALL TABLETS
+------------------------------ */
+@media (min-width: 481px) and (max-width: 768px) {
+  .controls {
+    flex-direction: row;
+    width: 90%;
+  }
+
+  .filter-bar {
+    width: auto;
+  }
+
+  .sidebar {
+    width: 92%;
+  }
+
+  .modal-content {
+    max-width: 92%;
+  }
+}
+
+
+/* -----------------------------
+   📲 TABLETS (iPad, Foldables)
+------------------------------ */
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    --header-height: 82px;
+  }
+
+  .controls {
+    gap: 10px;
+  }
+
+  .btn {
+    font-size: 0.95rem;
+  }
+
+  .sidebar {
+    width: 380px;
+  }
+
+  .search-box {
+    width: 420px;
+  }
+}
+
+
+/* -----------------------------
+   💻 LAPTOPS (1025px – 1440px)
+------------------------------ */
+@media (min-width: 1025px) and (max-width: 1440px) {
+  .sidebar {
+    width: 420px;
+  }
+
+  .modal-content {
+    max-width: 760px;
+  }
+
+  .btn:hover {
+    transform: translateY(-6px);
+  }
+}
+
+
+/* -----------------------------
+   🖥️ DESKTOPS / WIDE (≥1441px)
+------------------------------ */
+@media (min-width: 1441px) {
+  :root {
+    --header-height: 92px;
+  }
+
+  body {
+    font-size: 1.05rem;
+  }
+
+  .sidebar {
+    width: 480px;
+  }
+
+  .search-box {
+    width: 460px;
+  }
+
+  .modal-content {
+    max-width: 900px;
+  }
+}
+
+
+/* -----------------------------
+   🖥️ ULTRAWIDE MONITORS (≥1920px)
+------------------------------ */
+@media (min-width: 1920px) {
+  body {
+    font-size: 1.1rem;
+  }
+
+  .controls {
+    left: 32px;
+  }
+
+  .filter-bar {
+    transform: translateX(-50%) scale(1.05);
+  }
+
+  .sidebar {
+    width: 520px;
+  }
+}
+
+
+/* -----------------------------
+   🖥️ 4K SCREENS (≥2560px)
+------------------------------ */
+@media (min-width: 2560px) {
+  body {
+    font-size: 1.2rem;
+  }
+
+  .logo {
+    font-size: 2.4rem;
+  }
+
+  .btn {
+    padding: 16px 22px;
+    font-size: 1.1rem;
+  }
+
+  .sidebar {
+    width: 600px;
+  }
+}
+
+
+/* -----------------------------
+   📱 PORTRAIT MODE OPTIMIZATION
+------------------------------ */
+@media (orientation: portrait) {
+  .controls {
+    flex-wrap: wrap;
+  }
+
+  footer {
+    display: none;
+  }
+}
+
+
+/* -----------------------------
+   📱 LANDSCAPE MODE (PHONES)
+------------------------------ */
+@media (max-height: 500px) and (orientation: landscape) {
+  header {
+    flex-direction: row;
+  }
+
+  .search-box {
+    display: none;
+  }
+
+  .filter-bar {
+    top: calc(var(--header-height) + 10px);
+  }
+}
+
+
+/* -----------------------------
+   👆 TOUCH DEVICES
+------------------------------ */
+@media (hover: none) and (pointer: coarse) {
+  .btn:hover {
+    transform: none;
+  }
+
+  .btn:active {
+    transform: scale(0.96);
+  }
+}
+
+
+/* -----------------------------
+   🎥 REDUCED MOTION (ACCESSIBILITY)
+------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+
+/* -----------------------------
+   🌙 DARK MODE BOOST
+------------------------------ */
+@media (prefers-color-scheme: dark) {
+  [data-theme="light"] {
+    filter: brightness(0.98);
+  }
+}
+
+
+/* -----------------------------
+   🔍 HIGH DPI / RETINA
+------------------------------ */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .logo {
+    text-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+  }
+}
+
+
+/* -----------------------------
+   📦 FOLDABLE / DUAL SCREEN
+------------------------------ */
+@media (spanning: single-fold-vertical) {
+  .sidebar {
+    right: env(fold-width);
+  }
+}

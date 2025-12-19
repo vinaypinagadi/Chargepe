@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChargePe • Admin Dashboard</title>
+
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+    <!-- Leaflet for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- PapaParse for CSV generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <!-- jsPDF + autoTable for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --primary: #0ea5e9;
+            --green: #10b981;
+            --orange: #f59e0b;
+            --red: #ef4444;
+            --border: #e2e8f0;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --sidebar: #ffffff;
+            --sidebar-text: #475569;
+        }
+
+        body.dark {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --border: #334155;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            --sidebar: #1e293b;
+            --sidebar-text: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            transition: background 0.3s;
+        }
+
+        body.dark .chart-title,
+        body.dark .summary-info p,
+        body.dark .activity-item,
+        body.dark table th,
+        body.dark table td {
+            color: var(--text);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--sidebar);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            height: 100vh;
+            position: fixed;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+            z-index: 100;
+        }
+
+        .sidebar .logo {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--primary);
+            margin-bottom: 40px;
+            padding-left: 8px;
+        }
+
+        .nav-item {
+            padding: 14px 16px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--sidebar-text);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(14, 165, 233, 0.1);
+            color: var(--primary);
+        }
+
+        .nav-item i {
+            width: 20px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            flex: 1;
+            padding: 32px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .search-bar {
+            padding: 12px 20px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--card);
+            width: 320px;
+            font-size: 1rem;
+        }
+
+        .icon-btn {
+            padding: 12px 20px;
+            background: var(--card);
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .icon-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: var(--red);
+            color: white;
+            font-size: 0.7rem;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            margin-bottom: 40px;
+        }
+
+        .summary-card {
+            background: var(--card);
+            padding: 32px;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: all 0.3s;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .summary-card i {
+            font-size: 3rem;
+            color: var(--primary);
+            opacity: 0.8;
+        }
+
+        .summary-info h3 {
+            font-size: 2.5rem;
+            font-weight: 800;
+        }
+
+        .summary-info p {
+            color: var(--muted);
+            font-size: 1rem;
+        }
+
+        .chart-container,
+        .table-card {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: var(--shadow);
+            margin-bottom: 40px;
+        }
+
+        .chart-title {
+            font-size: 1.4rem;
+            color: var(--text);
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+        }
+
+        .chart-filter {
+            display: flex;
+            gap: 12px;
+        }
+
+        .chart-filter-btn {
+            padding: 8px 16px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .chart-filter-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .chart-filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 32px;
+        }
+
+        .status-approved {
+            background: #dcfce7;
+            color: var(--green);
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: var(--orange);
+        }
+
+        .status-rejected {
+            background: #fee2e2;
+            color: var(--red);
+        }
+
+        .status {
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Filter Buttons */
+        .filter-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 12px 24px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .filter-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Popup */
+        #bookingPopup {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            width: 400px;
+            background: var(--card);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border);
+            z-index: 1000;
+            display: none;
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .popup-station-img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            border-radius: 16px;
+            margin: 20px 0;
+        }
+
+        /* Activity Log */
+        .activity-log {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: var(--shadow);
+            max-height: 450px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 1rem;
+            color: var(--muted);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+
+        th {
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        td img {
+            border-radius: 8px;
+        }
+
+        /* Top Stations Specific Styling */
+        #top-stations table th,
+        #top-stations table td {
+            padding: 12px 10px;
+            font-size: 0.93rem;
+        }
+
+        #top-stations table img {
+            width: 36px;
+            height: 36px;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+
+        @media (max-width: 1400px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 80px;
+                padding: 24px 0;
+            }
+
+            .sidebar .logo,
+            .nav-item span {
+                display: none;
+            }
+
+            .main-content {
+                margin-left: 80px;
+            }
+
+            .search-bar {
+                width: 200px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">ChargePe</div>
+        <nav>
+            <div class="nav-item active" data-section="dashboard"><i
+                    class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+            <div class="nav-item" data-section="top-stations"><i
+                    class="fas fa-charging-station"></i><span>Stations</span></div>
+            <div class="nav-item" data-section="recent-bookings"><i
+                    class="fas fa-calendar-check"></i><span>Bookings</span></div>
+            <div class="nav-item" data-section="traffic-sources"><i class="fas fa-chart-bar"></i><span>Analytics</span>
+            </div>
+            <div class="nav-item"><i class="fas fa-cog"></i><span>Settings</span></div>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <header>
+            <div class="header-right">
+                <input type="text" class="search-bar" placeholder="Search stations, customers...">
+                <select style="padding:12px 20px; border-radius:12px; border:1px solid var(--border); font-size:1rem;">
+                    <option>Today</option>
+                    <option>This Week</option>
+                    <option>This Month</option>
+                    <option>Custom Range</option>
+                </select>
+            </div>
+            <div class="header-right">
+                <div class="icon-btn" onclick="exportCSV()"><i class="fas fa-file-csv"></i> CSV</div>
+                <div class="icon-btn" onclick="exportPDF()"><i class="fas fa-file-pdf"></i> PDF</div>
+                <div class="icon-btn" style="position:relative;"><i class="fas fa-bell"></i><span class="badge"
+                        id="pendingCount">0</span></div>
+                <div class="icon-btn" onclick="document.body.classList.toggle('dark')"><i class="fas fa-moon"></i></div>
+                <div class="icon-btn"><a href="index.html" target="_blank" rel="noopener noreferrer"><i
+                            class="fas fa-user"></i></a></div>
+            </div>
+        </header>
+
+        <!-- Filter Row -->
+        <div class="filter-row">
+            <button class="filter-btn active" data-filter="today">Today</button>
+            <button class="filter-btn" data-filter="week">This Week</button>
+            <button class="filter-btn" data-filter="month">This Month</button>
+            <button class="filter-btn" data-filter="quarter">Quarterly</button>
+            <button class="filter-btn" data-filter="half">Half Yearly</button>
+            <button class="filter-btn" data-filter="year">This Year</button>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards" id="dashboard">
+            <div class="summary-card"><i class="fas fa-bolt"></i>
+                <div class="summary-info">
+                    <h3 id="sessionsValue">0</h3>
+                    <p>Sessions <span style="color:var(--green)">+12%</span></p>
+                </div>
+            </div>
+            <div class="summary-card"><i class="fas fa-rupee-sign"></i>
+                <div class="summary-info">
+                    <h3 id="revenueValue">₹0</h3>
+                    <p>Revenue <span style="color:var(--green)">+8%</span></p>
+                </div>
+            </div>
+            <div class="summary-card"><i class="fas fa-users"></i>
+                <div class="summary-info">
+                    <h3 id="customersValue">0</h3>
+                    <p>Customers <span style="color:var(--red)">-12%</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports Chart -->
+        <div class="chart-container">
+            <div class="chart-title">Reports <span style="font-size:0.9rem;color:var(--muted)">Live</span>
+                <div class="chart-filter">
+                    <button class="chart-filter-btn active" data-chart="reportsChart" data-filter="today">Today</button>
+                    <button class="chart-filter-btn" data-chart="reportsChart" data-filter="month">This Month</button>
+                    <button class="chart-filter-btn" data-chart="reportsChart" data-filter="year">This Year</button>
+                </div>
+            </div>
+            <canvas id="reportsChart" height="120"></canvas>
+        </div>
+
+        <!-- Real-Time EV Charging Trends Chart -->
+        <div class="chart-container">
+            <div class="chart-title">EV Charging Trends <span
+                    style="font-size:0.9rem;color:var(--muted)">Real-Time</span>
+                <div class="chart-filter">
+                    <button class="chart-filter-btn active" data-chart="trendsChart" data-filter="today">Today</button>
+                    <button class="chart-filter-btn" data-chart="trendsChart" data-filter="month">This Month</button>
+                    <button class="chart-filter-btn" data-chart="trendsChart" data-filter="year">This Year</button>
+                </div>
+            </div>
+            <canvas id="trendsChart" height="120"></canvas>
+        </div>
+
+        <!-- Grid -->
+        <div class="grid">
+            <div class="chart-container" id="traffic-sources">
+                <div class="chart-title">Traffic Sources
+                    <div class="chart-filter">
+                        <button class="chart-filter-btn active" data-chart="trafficChart"
+                            data-filter="today">Today</button>
+                        <button class="chart-filter-btn" data-chart="trafficChart" data-filter="month">This
+                            Month</button>
+                        <button class="chart-filter-btn" data-chart="trafficChart" data-filter="year">This Year</button>
+                    </div>
+                </div>
+                <canvas id="trafficChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Budget Report
+                    <div class="chart-filter">
+                        <button class="chart-filter-btn active" data-chart="budgetChart"
+                            data-filter="today">Today</button>
+                        <button class="chart-filter-btn" data-chart="budgetChart" data-filter="month">This
+                            Month</button>
+                        <button class="chart-filter-btn" data-chart="budgetChart" data-filter="year">This Year</button>
+                    </div>
+                </div>
+                <canvas id="budgetChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Station Locations (Real-time)</div>
+                <div id="map" style="height: 400px;"></div>
+            </div>
+
+            <!-- Top Stations Table - Improved Fit -->
+            <div class="table-card" id="top-stations">
+                <div class="chart-title">Top Stations</div>
+                <div style="overflow-x:auto;">
+                    <table style="min-width:800px;">
+                        <thead>
+                            <tr>
+                                <th style="width:60px;">Preview</th>
+                                <th>Station</th>
+                                <th style="width:90px;">Rate</th>
+                                <th style="width:100px;">Sessions</th>
+                                <th style="width:90px;">Capacity</th>
+                                <th style="width:100px;">Utilization</th>
+                                <th style="width:140px;">Forecast (Next 3h)</th>
+                                <th style="width:100px;">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topStationsBody" style="font-size:0.92rem;"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="activity-log">
+                <div class="chart-title">Recent Activity</div>
+                <div id="activityLog"></div>
+            </div>
+        </div>
+
+        <!-- Recent Bookings Table -->
+        <div class="table-card" id="recent-bookings">
+            <div class="chart-title">Recent Bookings</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Customer</th>
+                        <th>Station</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="recentBookingsBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Booking Popup -->
+    <div id="bookingPopup">
+        <h3>New Booking Request</h3>
+        <img id="popupStationImg" src="" class="popup-station-img" alt="Station">
+        <div id="popupDetails"></div>
+        <div id="popupWeather"></div>
+        <div style="display:flex;gap:12px;margin-top:20px;">
+            <button onclick="approveBooking('manual')"
+                style="flex:1;padding:12px;border:none;border-radius:12px;background:var(--green);color:white;font-weight:600;cursor:pointer;">Approve</button>
+            <button onclick="rejectBooking()"
+                style="flex:1;padding:12px;border:none;border-radius:12px;background:var(--red);color:white;font-weight:600;cursor:pointer;">Reject</button>
+        </div>
+    </div>
+
+    <script>
+        // Station name generator
+        const names = ["Nexus", "Quantum", "Prime", "Elite", "Infinity", "Central", "Gateway", "Metro", "Hub", "Plaza"];
+        const areas = ["BKC", "Andheri", "Powai", "Bandra", "Worli", "Thane", "Vashi", "Goregaon", "Juhu", "Malad"];
+        const areaCoords = {
+            'BKC': [19.0600, 72.8600],
+            'Andheri': [19.1136, 72.8697],
+            'Powai': [19.1164, 72.9047],
+            'Bandra': [19.0600, 72.8400],
+            'Worli': [18.9936, 72.8169],
+            'Thane': [19.2183, 72.9781],
+            'Vashi': [19.0771, 72.9990],
+            'Goregaon': [19.1648, 72.8493],
+            'Juhu': [19.1071, 72.8275],
+            'Malad': [19.1867, 72.8484]
+        };
+
+        function generateStationName() {
+            const name = names[Math.floor(Math.random() * names.length)];
+            const area = areas[Math.floor(Math.random() * areas.length)];
+            return `${name} ${area}`;
+        }
+
+        // Generate initial stations
+        let stations = Array.from({ length: 10 }, () => {
+            const fullName = generateStationName();
+            const area = fullName.split(' ').pop();
+            const coords = areaCoords[area];
+            const rate = Math.floor(Math.random() * 60) + 30;
+            const capacity = Math.floor(Math.random() * 16) + 5;
+            const sessions = 0;
+            const revenue = 0;
+            const occupancy = 0;
+            const historicalOccupancy = Array.from({ length: 24 }, () => Math.floor(Math.random() * capacity));
+            return { name: fullName, rate, capacity, sessions, revenue, occupancy, historicalOccupancy, coords, filtSessions: 0, filtRevenue: 0, filtOccupancy: 0, weather: {}, forecastedUtil: 0 };
+        });
+
+        let bookings = [], activities = [], pendingBooking = null;
+        let pendingCount = 0;
+        let currentFilter = 'today';
+        let reportsChart, trafficChart, budgetChart, trendsChart;
+        let trafficSourcesData = {
+            today: [35, 25, 15, 15, 10],
+            month: [40, 30, 20, 5, 5],
+            year: [45, 25, 15, 10, 5]
+        };
+
+        // Advanced forecasting
+        function advancedForecastUtilization(historical, capacity, temperature) {
+            if (historical.length === 0) return 50;
+            const alpha = 0.4;
+            let forecast = historical[0];
+            for (let i = 1; i < historical.length; i++) {
+                forecast = alpha * historical[i] + (1 - alpha) * forecast;
+            }
+            const x = Array.from({ length: historical.length }, (_, i) => i + 1);
+            const y = historical;
+            const n = x.length;
+            const sumX = x.reduce((a, b) => a + b, 0);
+            const sumY = y.reduce((a, b) => a + b, 0);
+            const sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
+            const sumX2 = x.reduce((a, b) => a + b * b, 0);
+            const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+            const trend = slope * (n + 1) + intercept;
+            let predicted = (forecast * 0.7 + trend * 0.3);
+            if (temperature > 30) predicted *= 1.15;
+            else if (temperature < 20) predicted *= 0.85;
+            return Math.min(100, Math.max(0, (predicted / capacity) * 100));
+        }
+
+        // Charts
+        function initCharts() {
+            const animationOptions = { duration: 1500, easing: 'easeInOutQuart' };
+            reportsChart = new Chart(document.getElementById('reportsChart'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Sessions', data: [], borderColor: '#4361ee', backgroundColor: '#4361ee40', fill: true },
+                        { label: 'Revenue (₹)', data: [], borderColor: '#10b981', backgroundColor: '#10b98140', fill: true },
+                        { label: 'Customers', data: [], borderColor: '#f59e0b', backgroundColor: '#f59e0b40', fill: true },
+                        { label: 'Predictive Revenue', data: [], borderColor: '#ef4444', backgroundColor: '#ef444440', fill: false, borderDash: [5, 5] }
+                    ]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } }, animation: animationOptions, scales: { y: { beginAtZero: true } } }
+            });
+
+            trafficChart = new Chart(document.getElementById('trafficChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Search Engine', 'Direct', 'Email', 'Union Ads', 'Video Ads'],
+                    datasets: [{ data: trafficSourcesData.today, backgroundColor: ['#4361ee', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'] }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return context.label + ': ' + context.raw + '%';
+                                }
+                            }
+                        }
+                    },
+                    animation: animationOptions,
+                    cutout: '60%',
+                    elements: {
+                        arc: {
+                            borderWidth: 0
+                        }
+                    }
+                }
+            });
+
+            budgetChart = new Chart(document.getElementById('budgetChart'), {
+                type: 'radar',
+                data: {
+                    labels: ['Sales', 'Marketing', 'Develop', 'Customer Support', 'Technology', 'Administration'],
+                    datasets: [
+                        { label: 'Allocated', data: [90, 70, 85, 60, 75, 65], borderColor: '#4361ee', backgroundColor: '#4361ee30' },
+                        { label: 'Actual', data: [85, 75, 80, 65, 70, 70], borderColor: '#10b981', backgroundColor: '#10b98130' }
+                    ]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } }, animation: animationOptions }
+            });
+
+            trendsChart = new Chart(document.getElementById('trendsChart'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Active Sessions', data: [], borderColor: '#4361ee', backgroundColor: '#4361ee40', fill: true },
+                        { label: 'Energy Consumed (kWh)', data: [], borderColor: '#10b981', backgroundColor: '#10b98140', fill: true }
+                    ]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } }, animation: animationOptions, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        // Real-time trends update
+        function updateTrendsChart(filter = 'today') {
+            const now = new Date();
+            const labels = [];
+            const activeSessions = [];
+            const energyConsumed = [];
+            let interval = 60000; // 1 min
+            let count = 60;
+            if (filter === 'month') {
+                interval = 86400000; // 1 day
+                count = 30;
+            } else if (filter === 'year') {
+                interval = 2592000000; // ~1 month
+                count = 12;
+            }
+            for (let i = count - 1; i >= 0; i--) {
+                const time = new Date(now - i * interval);
+                labels.push(time.toLocaleDateString([], { month: 'short', day: 'numeric' }));
+                const active = bookings.filter(b => b.status === 'Approved' && b.time <= time && new Date(b.time.getTime() + b.duration * 60000) > time).length;
+                const energy = active * 50; // Approx 50 kWh per active session
+                activeSessions.push(active);
+                energyConsumed.push(energy);
+            }
+            trendsChart.data.labels = labels;
+            trendsChart.data.datasets[0].data = activeSessions;
+            trendsChart.data.datasets[1].data = energyConsumed;
+            trendsChart.update();
+        }
+
+        // Initialize Map
+        let map, userMarker;
+        async function initMap() {
+            map = L.map('map').setView([19.0760, 72.8777], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(position => {
+                    const { latitude, longitude } = position.coords;
+                    if (userMarker) map.removeLayer(userMarker);
+                    userMarker = L.marker([latitude, longitude]).addTo(map).bindPopup('Your Location');
+                    map.setView([latitude, longitude], 13);
+                }, () => { }, { enableHighAccuracy: true });
+            }
+
+            for (const s of stations) {
+                if (s.coords) {
+                    const weather = await fetchWeather(s.coords[0], s.coords[1]);
+                    s.weather = weather;
+                    s.forecastedUtil = advancedForecastUtilization(s.historicalOccupancy, s.capacity, weather.temperature);
+                    L.marker(s.coords).addTo(map).bindPopup(`<b>${s.name}</b><br>Utilization Forecast: ${s.forecastedUtil.toFixed(1)}%`);
+                }
+            }
+
+            setInterval(() => {
+                stations.forEach(s => {
+                    const last = s.historicalOccupancy[s.historicalOccupancy.length - 1];
+                    const newOcc = Math.max(0, Math.min(s.capacity, last + (Math.random() - 0.5) * 3));
+                    s.historicalOccupancy.push(newOcc);
+                    s.historicalOccupancy = s.historicalOccupancy.slice(-24);
+                    s.occupancy = newOcc;
+                    s.forecastedUtil = advancedForecastUtilization(s.historicalOccupancy, s.capacity, s.weather.temperature || 25);
+                });
+                applyFilter();
+                updateTrendsChart();
+            }, 10000);
+        }
+
+        async function fetchWeather(lat, lon) {
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+                const data = await res.json();
+                return data.current_weather || { temperature: 25, weathercode: 'Clear' };
+            } catch (e) {
+                return { temperature: 25, weathercode: 'Clear' };
+            }
+        }
+
+        function renderTables(filteredBookings) {
+            const topStations = [...stations].sort((a, b) => b.filtRevenue - a.filtRevenue).slice(0, 8);
+
+            document.getElementById('topStationsBody').innerHTML = topStations.map(s => `
+                <tr>
+                    <td><img src="https://picsum.photos/36/36?${encodeURIComponent(s.name)}" alt="${s.name}"></td>
+                    <td style="font-weight:600;">${s.name}</td>
+                    <td>₹${s.rate}</td>
+                    <td>${s.filtSessions.toLocaleString()}</td>
+                    <td>${s.capacity}</td>
+                    <td><strong>${((s.occupancy / s.capacity) * 100).toFixed(1)}%</strong></td>
+                    <td>
+                        <span style="padding:4px 10px; border-radius:8px; background:${s.forecastedUtil > 80 ? '#fee2e2' : s.forecastedUtil > 50 ? '#fef3c7' : '#dcfce7'
+                }; color:${s.forecastedUtil > 80 ? '#991b1b' : s.forecastedUtil > 50 ? '#92400e' : '#166534'
+                }; font-size:0.85rem; font-weight:600;">
+                            ${s.forecastedUtil.toFixed(1)}%
+                        </span>
+                    </td>
+                    <td><strong>₹${(s.filtRevenue / 100000).toFixed(2)}L</strong></td>
+                </tr>
+            `).join('');
+
+            const recent = filteredBookings.slice(-10).reverse();
+            document.getElementById('recentBookingsBody').innerHTML = recent.map((b, i) =>
+                `<tr><td>#${recent.length - i}</td><td>${b.customer}</td><td>${b.station}</td><td>₹${b.amount}</td><td><span class="status status-${b.status.toLowerCase()}">${b.status}</span></td></tr>`
+            ).join('');
+
+            document.getElementById('activityLog').innerHTML = activities.slice(0, 10).map(a => `<div class="activity-item">${a}</div>`).join('');
+            document.getElementById('pendingCount').textContent = pendingCount;
+        }
+
+        function logActivity(msg) {
+            activities.unshift(new Date().toLocaleTimeString() + ' — ' + msg);
+        }
+
+        async function showBookingPopup(booking) {
+            pendingBooking = booking;
+            pendingCount++;
+            const station = stations.find(s => s.name === booking.station);
+            const weather = station ? station.weather : { temperature: 25, weathercode: 'Clear' };
+            const forecasted = station ? station.forecastedUtil : 50;
+            document.getElementById('popupDetails').innerHTML =
+                `<p><strong>Customer:</strong> ${booking.customer}</p>
+                 <p><strong>Station:</strong> ${booking.station}</p>
+                 <p><strong>Amount:</strong> ₹${booking.amount}</p>
+                 <p><strong>Duration:</strong> ${booking.duration} min</p>
+                 <p><strong>Capacity:</strong> ${station ? station.capacity : 'N/A'}</p>
+                 <p><strong>Occupancy:</strong> ${station ? station.occupancy : 'N/A'}</p>
+                 <p><strong>Forecasted Utilization (Next 3h):</strong> ${forecasted.toFixed(1)}%</p>`;
+            document.getElementById('popupWeather').innerHTML = `<p><strong>Weather:</strong> ${weather.temperature}°C, ${weather.weathercode}</p>`;
+            document.getElementById('popupStationImg').src = `https://picsum.photos/400/140?${encodeURIComponent(booking.station)}`;
+            document.getElementById('bookingPopup').style.display = 'block';
+
+            trafficSourcesData.today = trafficSourcesData.today.map(v => v + Math.random() * 2);
+            updateTrafficChart('today');
+        }
+
+        function approveBooking(mode = 'ai') {
+            if (!pendingBooking) return;
+            pendingBooking.status = 'Approved';
+            pendingBooking.approvedBy = mode === 'ai' ? 'AI' : 'ChargePe Manager';
+            const station = stations.find(s => s.name === pendingBooking.station);
+            if (station) { station.sessions += 1; station.revenue += pendingBooking.amount; station.occupancy += 1; }
+            pendingCount--;
+            logActivity(`Approved booking for ${pendingBooking.customer} at ${pendingBooking.station} by ${pendingBooking.approvedBy}`);
+            applyFilter();
+            updateTrendsChart();
+            document.getElementById('bookingPopup').style.display = 'none';
+        }
+
+        function rejectBooking() {
+            if (!pendingBooking) return;
+            pendingBooking.status = 'Rejected';
+            pendingCount--;
+            logActivity(`Rejected booking for ${pendingBooking.customer} at ${pendingBooking.station}`);
+            applyFilter();
+            updateTrendsChart();
+            document.getElementById('bookingPopup').style.display = 'none';
+        }
+
+        function updateSummary(filtSessions, filtRevenue, filtCustomers) {
+            document.getElementById('sessionsValue').textContent = (filtSessions / 1000).toFixed(1) + 'K';
+            document.getElementById('revenueValue').textContent = `₹${(filtRevenue / 100000).toFixed(2)}L`;
+            document.getElementById('customersValue').textContent = (filtCustomers / 1000).toFixed(1) + 'K';
+        }
+
+        function applyFilter() {
+            const now = new Date();
+            let start = new Date(now);
+            switch (currentFilter) {
+                case 'today': start.setHours(0, 0, 0, 0); break;
+                case 'week': start.setDate(start.getDate() - start.getDay()); start.setHours(0, 0, 0, 0); break;
+                case 'month': start = new Date(now.getFullYear(), now.getMonth(), 1); break;
+                case 'quarter': const q = Math.floor(now.getMonth() / 3) * 3; start = new Date(now.getFullYear(), q, 1); break;
+                case 'half': const h = now.getMonth() < 6 ? 0 : 6; start = new Date(now.getFullYear(), h, 1); break;
+                case 'year': start = new Date(now.getFullYear(), 0, 1); break;
+            }
+
+            const filteredBookings = bookings.filter(b => b.time >= start && b.time <= now && b.status === 'Approved');
+
+            let filtSessions = filteredBookings.length;
+            let filtRevenue = filteredBookings.reduce((sum, b) => sum + b.amount, 0);
+            let filtCustomers = filteredBookings.length;
+
+            stations.forEach(s => { s.filtSessions = 0; s.filtRevenue = 0; });
+            filteredBookings.forEach(b => {
+                const station = stations.find(s => s.name === b.station);
+                if (station) {
+                    station.filtSessions++;
+                    station.filtRevenue += b.amount;
+                }
+            });
+
+            updateSummary(filtSessions, filtRevenue, filtCustomers);
+            renderTables(bookings.filter(b => b.time >= start && b.time <= now));
+
+            const bins = getBins(currentFilter, start, now);
+            const sessionsData = new Array(bins.length).fill(0);
+            const revenueData = new Array(bins.length).fill(0);
+            const customersData = new Array(bins.length).fill(0);
+            const predictiveRevenue = new Array(bins.length).fill(0);
+
+            filteredBookings.forEach(b => {
+                const binIndex = getBinIndex(b.time, bins, currentFilter);
+                if (binIndex !== -1) {
+                    sessionsData[binIndex]++;
+                    revenueData[binIndex] += b.amount;
+                    customersData[binIndex]++;
+                }
+            });
+
+            if (revenueData.length > 1) {
+                const last = revenueData[revenueData.length - 1];
+                const prev = revenueData[revenueData.length - 2];
+                const growth = last - prev;
+                for (let i = revenueData.length; i < revenueData.length + 3; i++) {
+                    predictiveRevenue[i] = last + growth * (i - revenueData.length + 1);
+                }
+            }
+
+            reportsChart.data.labels = bins.map(b => b.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            reportsChart.data.datasets[0].data = sessionsData;
+            reportsChart.data.datasets[1].data = revenueData;
+            reportsChart.data.datasets[2].data = customersData;
+            reportsChart.data.datasets[3].data = [...revenueData, ...predictiveRevenue.slice(revenueData.length)];
+            reportsChart.update();
+        }
+
+        function getBins(filter, start, end) {
+            const bins = [];
+            let current = new Date(start);
+            while (current <= end) {
+                bins.push(new Date(current));
+                if (filter === 'today') current.setHours(current.getHours() + 1);
+                else if (['week', 'month'].includes(filter)) current.setDate(current.getDate() + 1);
+                else current.setMonth(current.getMonth() + 1);
+            }
+            return bins;
+        }
+
+        function getBinIndex(time, bins, filter) {
+            for (let i = 0; i < bins.length - 1; i++) {
+                if (time >= bins[i] && time < bins[i + 1]) return i;
+            }
+            return bins.length - 1;
+        }
+
+        function updateTrafficChart(filter) {
+            trafficChart.data.datasets[0].data = trafficSourcesData[filter] || trafficSourcesData.today;
+            trafficChart.update();
+        }
+
+        function updateChartFilter(chartId, filter) {
+            if (chartId === 'trafficChart') updateTrafficChart(filter);
+            if (chartId === 'trendsChart') updateTrendsChart(filter);
+        }
+
+        const customerNames = ['Aarav Sharma', 'Vihaan Patel', 'Arjun Singh', 'Sai Reddy', 'Rohan Mehta', 'Ishaan Kumar', 'Dhruv Joshi', 'Ayaan Desai', 'Krishna Nair', 'Aditya Rao'];
+
+        function simulateNewBooking(historical = false) {
+            const booking = {
+                customer: customerNames[Math.floor(Math.random() * customerNames.length)],
+                station: stations[Math.floor(Math.random() * stations.length)].name,
+                amount: Math.floor(Math.random() * 180) + 70,
+                duration: Math.floor(Math.random() * 90) + 30,
+                status: historical ? (Math.random() > 0.2 ? 'Approved' : 'Rejected') : 'Pending',
+                time: historical ? randomDate(new Date(2025, 0, 1), new Date()) : new Date()
+            };
+            bookings.push(booking);
+            if (!historical) {
+                if (Math.random() > 0.5) {
+                    approveBooking('ai');
+                } else {
+                    showBookingPopup(booking);
+                }
+            }
+        }
+
+        function randomDate(start, end) {
+            return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+        }
+
+        // CSV Export
+        function exportCSV() {
+            const data = bookings.filter(b => b.status === 'Approved').map(b => ({
+                Date: b.time.toLocaleDateString(),
+                Time: b.time.toLocaleTimeString(),
+                Customer: b.customer,
+                Station: b.station,
+                Amount: b.amount,
+                Duration: b.duration + ' min',
+                ApprovedBy: b.approvedBy || 'N/A'
+            }));
+            const csv = Papa.unparse(data);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ChargePe_Report_${currentFilter}_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            logActivity('Exported data as CSV');
+        }
+
+        // PDF Export
+        function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape' });
+            doc.setFontSize(18);
+            doc.text('ChargePe - Booking Report', 14, 15);
+            doc.setFontSize(12);
+            doc.text(`Period: ${currentFilter} | Generated: ${new Date().toLocaleDateString()}`, 14, 25);
+
+            const tableData = bookings.filter(b => b.status === 'Approved').map(b => [
+                b.time.toLocaleDateString(),
+                b.time.toLocaleTimeString(),
+                b.customer,
+                b.station,
+                `₹${b.amount}`,
+                b.duration + ' min',
+                b.approvedBy || 'N/A'
+            ]);
+
+            doc.autoTable({
+                head: [['Date', 'Time', 'Customer', 'Station', 'Amount', 'Duration', 'Approved By']],
+                body: tableData,
+                startY: 35,
+                theme: 'grid'
+            });
+
+            doc.save(`ChargePe_Report_${currentFilter}_${new Date().toISOString().split('T')[0]}.pdf`);
+            logActivity('Exported data as PDF');
+        }
+
+        function scrollToSection(sectionId) {
+            const element = document.getElementById(sectionId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+            } else if (sectionId === 'dashboard') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                applyFilter();
+            });
+        });
+
+        document.querySelectorAll('.chart-filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const chartFilter = btn.parentElement;
+                chartFilter.querySelectorAll('.chart-filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const chartId = btn.dataset.chart;
+                const filter = btn.dataset.filter;
+                updateChartFilter(chartId, filter);
+            });
+        });
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                const section = item.dataset.section;
+                if (section) {
+                    scrollToSection(section);
+                }
+            });
+        });
+
+        // Real-time sync with index.html using localStorage key 'evBookings'
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'evBookings') {
+                const newBookings = JSON.parse(event.newValue || '[]');
+                newBookings.forEach(b => {
+                    if (!bookings.find(existing => existing.time === b.time && existing.customer === b.customer)) {
+                        bookings.push(b);
+                        if (b.status === 'Pending') showBookingPopup(b);
+                    }
+                });
+                applyFilter();
+                updateTrendsChart();
+            }
+        });
+
+        // Init
+        (async () => {
+            initCharts();
+            await initMap();
+            for (let i = 0; i < 5000; i++) simulateNewBooking(true);
+            setInterval(() => simulateNewBooking(false), 15000 + Math.random() * 10000);
+            setInterval(updateTrendsChart, 5000);
+            applyFilter();
+            updateTrendsChart();
+        })();
+    </script>
+</body>
+
+</html>
