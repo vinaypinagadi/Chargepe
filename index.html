@@ -8,6 +8,7 @@
     <meta name="description"
         content="Find, reserve, and charge instantly at 350 kW stations across India. Frontend-only upgrades: PWA caching, AR overlay, Lottie, simulator, export/import." />
     <meta name="theme-color" content="#00d4ff">
+    <link rel="shortcut icon" href="logo.jpg" type="image/x-icon">
 
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap"
@@ -465,7 +466,6 @@
             customizer, offline caching (PWA), and animated simulator.</p>
     </div>
 
-    <!-- Reserve / Simulator Modal -->
     <div class="modal" id="reserveModal">
         <div class="modal-content">
             <button
@@ -483,6 +483,47 @@
                                     Distance: <strong id="distance">--</strong> km</div>
                                 <div style="flex:1;background:rgba(0,0,0,0.04);padding:12px;border-radius:10px;">ETA:
                                     <strong id="eta">--</strong> mins
+                                </div>
+                            </div>
+
+                            <!-- Nearby Points of Interest Section -->
+                            <div style="margin-top:18px;">
+                                <h3
+                                    style="margin-bottom:10px;font-size:1.1rem;font-weight:600;color:var(--text-light);">
+                                    Nearby Amenities</h3>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.95rem;">
+                                    <div
+                                        style="background:rgba(0,0,0,0.04);padding:12px;border-radius:10px;display:flex;align-items:center;gap:10px;">
+                                        <span style="font-size:1.5rem;">🏥</span>
+                                        <div>
+                                            <div style="font-weight:600;">City General Hospital</div>
+                                            <div style="opacity:0.7;font-size:0.9rem;">0.8 km away</div>
+                                        </div>
+                                    </div>
+                                    <div
+                                        style="background:rgba(0,0,0,0.04);padding:12px;border-radius:10px;display:flex;align-items:center;gap:10px;">
+                                        <span style="font-size:1.5rem;">🍜</span>
+                                        <div>
+                                            <div style="font-weight:600;">Riverside Restaurant</div>
+                                            <div style="opacity:0.7;font-size:0.9rem;">0.4 km away</div>
+                                        </div>
+                                    </div>
+                                    <div
+                                        style="background:rgba(0,0,0,0.04);padding:12px;border-radius:10px;display:flex;align-items:center;gap:10px;">
+                                        <span style="font-size:1.5rem;">🌳</span>
+                                        <div>
+                                            <div style="font-weight:600;">Central Park</div>
+                                            <div style="opacity:0.7;font-size:0.9rem;">1.2 km away</div>
+                                        </div>
+                                    </div>
+                                    <div
+                                        style="background:rgba(0,0,0,0.04);padding:12px;border-radius:10px;display:flex;align-items:center;gap:10px;">
+                                        <span style="font-size:1.5rem;">🚧</span>
+                                        <div>
+                                            <div style="font-weight:600;color:#ffaa00;">Construction Zone</div>
+                                            <div style="opacity:0.7;font-size:0.9rem;">On Main St • Expect delays</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -542,7 +583,6 @@
     <div class="toast" id="toast">Ready</div>
     <footer>© 2025 ChargePe • Frontend Upgrades • Offline-First</footer>
 
-    <audio id="clickSound" src="https://assets.mixkit.co/sfx/preview/mixkit-fast-click-1376.mp3"></audio>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
@@ -820,6 +860,186 @@
             // This placeholder is left for later implementation.
         }
 
+    </script>
+
+      <script id="module-queue-position-display-and-cancellation">
+        // === Enhanced Queue Position + Leave Queue + Cancel with Confirmation Modal ===
+        function getQueuePosition(bookingId) {
+            for (const stationId in window.stationQueues) {
+                const entry = window.stationQueues[stationId].find(e => e.bookingId === bookingId);
+                if (entry) {
+                    return `Queue Position: #${entry.position} (${window.stationQueues[stationId].length} total waiting)`;
+                }
+            }
+            return null;
+        }
+
+        function cancelBooking(bookingId) {
+            const idx = bookings.findIndex(b => b.id == bookingId);
+            if (idx === -1) {
+                showToast("Booking not found", "error");
+                return;
+            }
+
+            const booking = bookings[idx];
+            const stationId = booking.station?.id;
+
+            // Remove from bookings
+            bookings.splice(idx, 1);
+            localStorage.setItem('evBookings', JSON.stringify(bookings));
+
+            // Remove from queue if present
+            if (stationId) {
+                leaveQueue(stationId, bookingId);
+            }
+
+            // Free station if it was reserved/charging
+            const station = window.stations?.find(s => s.id === stationId);
+            if (station && (station.status === 'reserved' || station.status === 'charging')) {
+                station.status = 'available';
+                renderMarkers();
+                updateAvailabilityBadge();
+            }
+
+            // Cancel active simulation
+            if (currentBooking?.id == bookingId) {
+                if (simInterval) cancelSimulation();
+                currentBooking = null;
+                currentStation = null;
+            }
+
+            loadBookings();
+            showToast(`Booking #${bookingId} cancelled – Refund processed`, "success");
+            playSound();
+        }
+
+        // Global variable for cancel modal
+        let cancelBookingId = null;
+
+        function openCancelModal(id) {
+            cancelBookingId = id;
+            const booking = bookings.find(b => b.id == id);
+            const feeText = document.getElementById('cancelFeeText');
+            const refundText = document.getElementById('refundText');
+
+            if (booking && booking.amount > 0) {
+                const fee = 50; // Fixed cancellation fee
+                const refundAmount = Math.max(0, booking.amount - fee);
+                feeText.innerHTML = `<strong>₹${fee}</strong> cancellation fee will be deducted.`;
+                refundText.innerHTML = refundAmount > 0
+                    ? `₹${refundAmount} will be refunded to your original payment method in 2–3 working days.`
+                    : `No refund applicable (amount ≤ fee).`;
+            } else {
+                feeText.innerHTML = 'This booking will be cancelled.';
+                refundText.innerHTML = '';
+            }
+
+            document.getElementById('cancelModal').classList.add('show');
+            playSound();
+        }
+
+        function proceedCancel() {
+            if (!cancelBookingId) return;
+            cancelBooking(cancelBookingId);
+            cancelBookingId = null;
+            closeModal('cancelModal');
+        }
+
+        // Enhanced loadBookings with Cancel → Modal
+        const origLoadBookings = window.loadBookings || function () { };
+        window.loadBookings = function () {
+            origLoadBookings.apply(this, arguments);
+
+            const list = document.getElementById('bookingsList');
+            if (!list || bookings.length === 0) return;
+
+            Array.from(list.children).forEach(card => {
+                // Extract booking ID from text (reliable way)
+                const match = card.textContent.match(/#(\d+)/);
+                if (!match) return;
+                const bookingId = parseInt(match[1]);
+
+                const booking = bookings.find(b => b.id == bookingId);
+                if (!booking) return;
+
+                // Queue position badge (existing logic)
+                const queuePos = getQueuePosition(bookingId);
+                let badge = card.querySelector('.queue-badge');
+                if (queuePos && !badge) {
+                    badge = document.createElement('div');
+                    badge.className = 'queue-badge';
+                    badge.style.cssText = 'background:rgba(255,165,0,0.15);color:#ffa500;padding:4px 10px;border-radius:8px;font-size:0.85rem;margin-top:6px;font-weight:600;';
+                    badge.textContent = queuePos;
+                    const title = card.querySelector('h4') || card.firstElementChild;
+                    if (title) title.after(badge);
+                } else if (badge && !queuePos) {
+                    badge.remove();
+                }
+
+                // Button row
+                let btnRow = card.querySelector('.booking-btn-row') || card.querySelector('div[style*="display:flex;gap"]');
+                if (!btnRow) {
+                    btnRow = document.createElement('div');
+                    btnRow.className = 'booking-btn-row';
+                    btnRow.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;';
+                    card.appendChild(btnRow);
+                }
+
+                // Clear old custom buttons to avoid duplicates
+                btnRow.querySelectorAll('.custom-booking-btn').forEach(b => b.remove());
+
+                // Show on Map
+                let mapBtn = btnRow.querySelector('button:nth-child(1)');
+                if (!mapBtn) {
+                    mapBtn = document.createElement('button');
+                    mapBtn.className = 'btn custom-booking-btn';
+                    mapBtn.textContent = 'Show on Map';
+                    mapBtn.onclick = () => {
+                        map.setView([booking.station.lat, booking.station.lng], 17);
+                        toggleSidebar();
+                    };
+                    btnRow.appendChild(mapBtn);
+                }
+
+                // Invoice
+                let invBtn = btnRow.querySelector('button:nth-child(2)');
+                if (!invBtn) {
+                    invBtn = document.createElement('button');
+                    invBtn.className = 'btn custom-booking-btn';
+                    invBtn.textContent = 'Invoice';
+                    invBtn.onclick = () => openInvoice(bookingId);
+                    btnRow.appendChild(invBtn);
+                }
+
+                // Leave Queue (if in queue)
+                if (queuePos) {
+                    let leaveBtn = btnRow.querySelector('button[style*="background:#ff9500"]');
+                    if (!leaveBtn) {
+                        leaveBtn = document.createElement('button');
+                        leaveBtn.className = 'btn custom-booking-btn';
+                        leaveBtn.style.cssText = 'background:#ff9500;color:white;';
+                        leaveBtn.textContent = 'Leave Queue';
+                        leaveBtn.onclick = () => {
+                            if (confirm('Leave the queue?')) {
+                                leaveQueue(booking.station.id, bookingId);
+                            }
+                        };
+                        btnRow.appendChild(leaveBtn);
+                    }
+                }
+
+                // Cancel Button - ALWAYS VISIBLE with modal
+                let cancelBtn = btnRow.querySelector('button[style*="background:#ff3b30"]') || btnRow.querySelector('button:text("Cancel")');
+                if (!cancelBtn) {
+                    cancelBtn = document.createElement('button');
+                    cancelBtn.className = 'btn custom-booking-btn';
+                    cancelBtn.style.cssText = 'background:#ff3b30;color:white;';
+                    cancelBtn.textContent = 'Cancel';
+                    btnRow.appendChild(cancelBtn);
+                }
+                cancelBtn.onclick = () => openCancelModal(bookingId);  // This opens the popup
+            });
+        };
     </script>
 
     <script id="module-3-ai-station-choice">
@@ -2655,9 +2875,294 @@
 
     </script>
 
+        <script id="module-queue-management-final">
+        // === Final Queue Management + Position Display + Leave Queue + Cancellation ===
+        // Global queue: stationId → [{ bookingId, position, timestamp }]
+        window.stationQueues = window.stationQueues || {};
 
-<script src="chargepe-sync.js"></script>
-<script src="chargepe-realtime-sync.js"></script>
+        // Initialize queues for all stations
+        function initQueues() {
+            if (!window.stations) return;
+            window.stations.forEach(st => {
+                if (!window.stationQueues[st.id]) {
+                    window.stationQueues[st.id] = [];
+                }
+            });
+        }
+
+        // Join queue when station is busy
+        function joinQueue(stationId) {
+            if (!currentBooking) {
+                showToast("Create a reservation first to join queue", "warning");
+                return;
+            }
+
+            const queue = window.stationQueues[stationId];
+            if (queue.some(e => e.bookingId === currentBooking.id)) {
+                showToast("You are already in this queue", "info");
+                return;
+            }
+
+            const position = queue.length + 1;
+            queue.push({
+                bookingId: currentBooking.id,
+                position: position,
+                timestamp: Date.now()
+            });
+
+            const estWait = position * 45;
+            showToast(`Joined queue – Position #${position} (est. ${estWait} min wait)`, "success");
+
+            renderMarkers();
+            loadBookings();
+        }
+
+        // Leave queue manually
+        function leaveQueue(stationId, bookingId) {
+            const queue = window.stationQueues[stationId];
+            if (!queue) return;
+
+            const beforeLength = queue.length;
+            window.stationQueues[stationId] = queue.filter(e => e.bookingId !== bookingId);
+
+            if (queue.length < beforeLength) {
+                queue.forEach((e, i) => e.position = i + 1);
+                showToast("You have left the queue", "info");
+                loadBookings();
+                renderMarkers();
+            }
+        }
+
+        // Advance queue on session complete
+        function advanceQueue(stationId) {
+            const queue = window.stationQueues[stationId];
+            if (!queue || queue.length === 0) return;
+
+            const next = queue.shift();
+            queue.forEach((e, i) => e.position = i + 1);
+
+            const station = window.stations.find(s => s.id === stationId);
+            showToast(`Your turn! Booking #${next.bookingId} at ${station?.name || stationId} is now available`, "success");
+
+            if (station) {
+                station.status = 'available';
+                renderMarkers();
+                updateAvailabilityBadge();
+            }
+            loadBookings();
+        }
+
+        // Hook completeSimulation
+        const origCompleteSimulation = window.completeSimulation;
+        window.completeSimulation = function () {
+            const result = origCompleteSimulation.apply(this, arguments);
+            if (currentStation?.id) advanceQueue(currentStation.id);
+            return result;
+        };
+
+        // Modify popup for busy stations
+        const origGetPopup = window.getPopup;
+        window.getPopup = function (st) {
+            let html = origGetPopup.call(this, st);
+            if (st.status !== 'available') {
+                const qLen = window.stationQueues[st.id]?.length || 0;
+                const btn = `<button class="btn btn-primary" style="width:100%;margin-top:8px;padding:8px" onclick="joinQueue('${st.id}')">
+                Join Queue (${qLen} waiting)
+            </button>`;
+                html = html.replace('<p style="color:#888;margin-top:8px">Currently unavailable</p>', btn);
+            }
+            return html;
+        };
+
+        // Auto-join queue on busy reserve attempt
+        const origOpenReservation = window.openReservation;
+        window.openReservation = function (id) {
+            const st = window.stations.find(s => s.id === id);
+            if (!st) return;
+
+            if (st.status === 'available') {
+                origOpenReservation.call(this, id);
+            } else {
+                currentStation = st;
+                if (!currentBooking) {
+                    currentBooking = {
+                        id: Date.now(),
+                        station: st,
+                        vehicle: "Queued EV",
+                        plan: "Waiting in Queue",
+                        amount: 0,
+                        time: new Date().toLocaleString('en-IN'),
+                        queued: true
+                    };
+                    bookings.push(currentBooking);
+                    localStorage.setItem('evBookings', JSON.stringify(bookings));
+                }
+                joinQueue(id);
+                closeModal('reserveModal');
+            }
+        };
+
+        // Initialize on station load
+        const origGenerateStations = window.generateStationsAround;
+        window.generateStationsAround = function (...args) {
+            origGenerateStations.apply(this, args);
+            initQueues();
+        };
+        if (window.stations) initQueues();
+    </script>
+
+
+    <script id="module-queue-position-display-and-cancellation">
+        // === Queue Position Display + Leave Queue Button + Full Cancellation ===
+        function getQueuePosition(bookingId) {
+            for (const stationId in window.stationQueues) {
+                const entry = window.stationQueues[stationId].find(e => e.bookingId === bookingId);
+                if (entry) {
+                    const waiting = entry.position;
+                    return `Queue Position: #${waiting} (${window.stationQueues[stationId].length} total waiting)`;
+                }
+            }
+            return null;
+        }
+
+        function cancelBooking(bookingId) {
+            const idx = bookings.findIndex(b => b.id == bookingId);
+            if (idx === -1) {
+                showToast("Booking not found", "error");
+                return;
+            }
+
+            const booking = bookings[idx];
+            const stationId = booking.station?.id;
+
+            // Remove from bookings
+            bookings.splice(idx, 1);
+            localStorage.setItem('evBookings', JSON.stringify(bookings));
+
+            // Remove from queue if present
+            if (stationId) {
+                leaveQueue(stationId, bookingId);
+            }
+
+            // Free station if it was reserved/charging
+            const station = window.stations?.find(s => s.id === stationId);
+            if (station && (station.status === 'reserved' || station.status === 'charging')) {
+                station.status = 'available';
+                renderMarkers();
+                updateAvailabilityBadge();
+            }
+
+            // Cancel active simulation
+            if (currentBooking?.id == bookingId) {
+                if (simInterval) cancelSimulation();
+                currentBooking = null;
+                currentStation = null;
+            }
+
+            loadBookings();
+            showToast(`Booking #${bookingId} cancelled – Refund processed`, "success");
+            playSound();
+        }
+
+        // Enhanced loadBookings: show queue position + Leave Queue + Cancel buttons
+        const origLoadBookings = window.loadBookings;
+        window.loadBookings = function () {
+            origLoadBookings.apply(this, arguments);
+
+            const list = document.getElementById('bookingsList');
+            if (!list || bookings.length === 0) return;
+
+            Array.from(list.children).forEach(card => {
+                // Skip non-booking cards
+                if (!card.innerHTML.includes('Booking #')) return;
+
+                // Extract booking ID
+                const match = card.textContent.match(/#(\d+)/);
+                if (!match) return;
+                const bookingId = parseInt(match[1]);
+
+                const booking = bookings.find(b => b.id == bookingId);
+                if (!booking) return;
+
+                // Add queue position badge
+                const queuePos = getQueuePosition(bookingId);
+                let badge = card.querySelector('.queue-badge');
+                if (!badge && queuePos) {
+                    badge = document.createElement('div');
+                    badge.className = 'queue-badge';
+                    badge.style.cssText = 'background:rgba(255,165,0,0.15);color:#ffa500;padding:4px 10px;border-radius:8px;font-size:0.85rem;margin-top:6px;font-weight:600;';
+                    badge.textContent = queuePos;
+                    const title = card.querySelector('h4') || card.firstElementChild;
+                    if (title) title.after(badge);
+                } else if (badge && !queuePos) {
+                    badge.remove();
+                }
+
+                // Button row
+                let btnRow = card.querySelector('.booking-btn-row');
+                if (!btnRow) {
+                    btnRow = document.createElement('div');
+                    btnRow.className = 'booking-btn-row';
+                    btnRow.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;';
+                    const existingBtns = card.querySelector('div[style*="display:flex"]');
+                    if (existingBtns) existingBtns.after(btnRow);
+                    else card.appendChild(btnRow);
+                }
+
+                // Clear old custom buttons
+                btnRow.querySelectorAll('.custom-booking-btn').forEach(b => b.remove());
+
+                // Show on Map (keep existing if present)
+                if (!btnRow.querySelector('button[onclick*="map.setView"]')) {
+                    const mapBtn = document.createElement('button');
+                    mapBtn.className = 'btn custom-booking-btn';
+                    mapBtn.textContent = 'Show on Map';
+                    mapBtn.onclick = () => {
+                        map.setView([booking.station.lat, booking.station.lng], 17);
+                        toggleSidebar();
+                    };
+                    btnRow.appendChild(mapBtn);
+                }
+
+                // Invoice
+                const invoiceBtn = document.createElement('button');
+                invoiceBtn.className = 'btn custom-booking-btn';
+                invoiceBtn.textContent = 'Invoice';
+                invoiceBtn.onclick = () => openInvoice(bookingId);
+                btnRow.appendChild(invoiceBtn);
+
+                // Leave Queue (only if in queue)
+                if (queuePos) {
+                    const leaveBtn = document.createElement('button');
+                    leaveBtn.className = 'btn custom-booking-btn';
+                    leaveBtn.style.background = '#ff9500';
+                    leaveBtn.style.color = 'white';
+                    leaveBtn.textContent = 'Leave Queue';
+                    leaveBtn.onclick = () => {
+                        const stationId = booking.station?.id;
+                        if (stationId) leaveQueue(stationId, bookingId);
+                    };
+                    btnRow.appendChild(leaveBtn);
+                }
+
+                // Cancel
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'btn custom-booking-btn';
+                cancelBtn.style.background = '#ff3b30';
+                cancelBtn.style.color = 'white';
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openCancelModal(bookingId);
+                };
+                btnRow.appendChild(cancelBtn);
+            });
+        };
+    </script>
+
+
+    <script src="chargepe-sync.js"></script>
+    <script src="chargepe-realtime-sync.js"></script>
 
 </body>
 </body>
