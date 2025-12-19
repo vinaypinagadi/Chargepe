@@ -442,8 +442,7 @@
         </div>
 
         <div style="display:flex;gap:10px;margin-bottom:12px;">
-            <button class="btn" style="flex:1;background:#ff3b30;color:white;" onclick="clearAllBookings()">Clear
-                All</button>
+            <button class="btn" style="flex:1;background:#ff3b30;color:white;" onclick="clearAllBookings()">Cancel My Order </button>
             <button class="btn" style="flex:1;" onclick="exportBookings()"><i class="fas fa-file-export"></i>
                 Export</button>
         </div>
@@ -678,7 +677,7 @@
         function openInvoice(id) { const b = bookings.find(x => x.id == id); if (!b) return showToast('Invoice not found'); currentBooking = b; generateInvoice(b); }
 
         function clearAllBookings() {
-            if (!confirm('Clear all your bookings?')) return;
+            if (!confirm('Cancel all your Orders?')) return;
 
             // Load saved bookings
             const saved = JSON.parse(localStorage.getItem('evBookings') || '[]');
